@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  # Research Tool Service (Port 8001)
+  research-tools:
+    build: ./services/research_tools
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./data:/app/data
+
+  # Research Agent Service (Port 8000)  
+  research-agent:
+    build: ./services/research_agent
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - TOOL_SERVICE_URL=http://research-tools:8001
+    depends_on:
+      - research-tools
