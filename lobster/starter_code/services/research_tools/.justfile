@@ -1,6 +1,6 @@
 # Common variables
 PY_FLAGS := "PYTHONDONTWRITEBYTECODE=1"
-SRC      := "src"
+SRC      := "research_tools"
 TESTS    := "tests"
 
 # Prek: Wire hooks into git automatically
@@ -28,7 +28,7 @@ clean:
 
 # Run tests with coverage
 test:
-    {{PY_FLAGS}} uv run pytest -v "{{TESTS}}" --cov=research_tools --cov-report=term-missing
+    {{PY_FLAGS}} uv run pytest -v "{{TESTS}}" --cov="{{SRC}}" --cov-report=term-missing
 
 # Check formatting
 format-check:

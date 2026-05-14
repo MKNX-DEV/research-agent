@@ -5,18 +5,21 @@ This is a template - feel free to completely rewrite or restructure as needed.
 This service exposes tools via MCP protocol for agents to use.
 """
 
-#from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
-from fastapi.requests import Request
+# from fastapi import FastAPI, HTTPException
+import json
 import logging
-#from typing import Any
+
+from fastapi.requests import Request
+from fastapi.responses import JSONResponse
+
+# from typing import Any
 from fastmcp import FastMCP
 
 # TODO: Import your common models
 # from common import MCPSpec, ToolRequest, ToolResponse, ResearchResult, ResearchSynthesis, ...
-
 from research_tools.config import MCPConfig
-#from utils import JsonSearchEngine
+
+# from utils import SearchEngine
 
 # app = FastAPI(
 #     title="Research Tool Service",
@@ -40,7 +43,7 @@ logger = logging.getLogger(__name__)
 # async def get_mcp_spec():
 #     """
 #     Return the MCP specification of available research tools.
-    
+
 #     TODO: Implement this endpoint to return an MCPSpec object
 #     describing the research tools this service provides.
 #     """
@@ -53,7 +56,7 @@ logger = logging.getLogger(__name__)
 # async def execute_tool(tool_name: str, request: dict[str, Any]):
 #     """
 #     Execute a specific research tool via MCP protocol.
-    
+
 #     TODO: Implement tool execution logic.
 #     Expected tools:
 #     - search: Search for information using mock data sources
@@ -71,10 +74,8 @@ logger = logging.getLogger(__name__)
 
 mcp_config = MCPConfig()
 
-mcp_server = FastMCP(
-	name=mcp_config.server_name, 
-    on_duplicate=mcp_config.on_duplicate
-)
+mcp_server = FastMCP(name=mcp_config.server_name, on_duplicate=mcp_config.on_duplicate)
+
 
 @mcp_server.custom_route("/health", methods=["GET"])
 async def health_check(request: Request):
@@ -86,19 +87,19 @@ async def health_check(request: Request):
     mime_type="application/json",
 )
 async def search(
-    sources: str, 
-    #query: str, max_results: int
-    ) -> dict:
+    sources: str,
+    # query: str, max_results: int
+) -> dict:
     """
     **search**
     - Purpose: Search for information in mock data sources
-    - Parameters: 
+    - Parameters:
     - `sources` (string): Knowledge base category to filter search
     - `query` (string): Search query keyword
     - `max_results` (int): Maximum number of results to return
     """
-    import json
-    with open("/Users/november/repos/take-home-assignments/lobster/data/mock_research_data.json") as f:
+
+    with open(mcp_config.data) as f:
         data = json.load(f)
 
     return {
@@ -106,29 +107,30 @@ async def search(
         "results": data[sources],
     }
 
-#     searcher = JsonSearchEngine(data=mcp_config.data, source=sources)
-#     return searcher.search(query=query, top_k=max_results)
 
+@mcp_server.tool
+async def syntesize(source_contents: list[str]) -> str:
+    """
+    **synthesize**
+    - Purpose: Combine multiple sources into coherent summary
+    - Parameters:
+    - `source_contents` (list of strings): Source texts to synthesize
+    - Returns: Synthesized text with inline citations
+    """
+    if not source_contents:
+        return "No sources provided."
 
-# @mcp_server.tool
-# async def syntesize(source_contents: list[str]) -> str:
-#     """
-#     **synthesize**
-#     - Purpose: Combine multiple sources into coherent summary
-#     - Parameters:
-#     - `source_contents` (list of strings): Source texts to synthesize
-#     - Returns: Synthesized text with inline citations
-#     """
-#     if not source_contents:
-#         return "No sources provided."
+    cleaned_sources = [
+        text.strip() for text in source_contents if text and text.strip()
+    ]
 
-#     cleaned_sources = [text.strip() for text in source_contents if text and text.strip()]
+    if not cleaned_sources:
+        return "No valid source content provided."
 
-#     if not cleaned_sources:
-#         return "No valid source content provided."
-    
-#     summary = " ".join(f"{text} [{idx}]" for idx, text in enumerate(cleaned_sources, start=1))
-#     return summary
+    summary = " ".join(
+        f"{text} [{idx}]" for idx, text in enumerate(cleaned_sources, start=1)
+    )
+    return summary
 
 
 # @mcp_server.prompt
@@ -141,7 +143,7 @@ async def search(
 #     - `user_query` (string): User query for analysis focus
 #     - Returns: Analysis results based on user query
 #     """
-    
+
 #     return f"""
 #         You are an expert analyst.
 
@@ -155,12 +157,11 @@ async def search(
 #     """
 
 
-
 if __name__ == "__main__":
-    #import uvicorn
-    #uvicorn.run(app, host="0.0.0.0", port=8001)
+    # import uvicorn
+    # uvicorn.run(app, host="0.0.0.0", port=8001)
     mcp_server.run(
-        transport="streamable-http",
-        host="0.0.0.0",
-        port=8001,
+        transport=mcp_config.transport,
+        host=mcp_config.host,
+        port=mcp_config.port,
     )

@@ -1,12 +1,10 @@
-import json
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from pathlib import Path
 
 
-class JsonSearchEngine:
-    def __init__(self, data: Path, source: str):
-        self.data = json.loads(data)[source]
+class SearchEngine:
+    def __init__(self, data):
+        self.data = data
         self.documents = []
         self.metadata = []
 
@@ -29,9 +27,6 @@ class JsonSearchEngine:
 
         results = []
         for idx in ranked_indices:
-            results.append({
-                **self.metadata[idx],
-                "score": float(scores[idx])
-            })
+            results.append({**self.metadata[idx], "score": float(scores[idx])})
 
         return results
