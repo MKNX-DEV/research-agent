@@ -6,7 +6,6 @@ This service exposes tools via MCP protocol for agents to use.
 """
 
 # from fastapi import FastAPI, HTTPException
-import json
 import logging
 
 from fastapi.requests import Request
@@ -18,8 +17,7 @@ from fastmcp import FastMCP
 # TODO: Import your common models
 # from common import MCPSpec, ToolRequest, ToolResponse, ResearchResult, ResearchSynthesis, ...
 from research_tools.config import MCPConfig
-
-# from utils import SearchEngine
+from research_tools.utils import SearchEngine
 
 # app = FastAPI(
 #     title="Research Tool Service",
@@ -82,14 +80,8 @@ async def health_check(request: Request):
     return JSONResponse({"status": "healthy"})
 
 
-@mcp_server.resource(
-    "data://research_data/{sources}",
-    mime_type="application/json",
-)
-async def search(
-    sources: str,
-    # query: str, max_results: int
-) -> dict:
+@mcp_server.tool
+async def search(sources: str, query: str, max_results: int) -> list[dict[str, str]]:
     """
     **search**
     - Purpose: Search for information in mock data sources
@@ -99,30 +91,41 @@ async def search(
     - `max_results` (int): Maximum number of results to return
     """
 
-    with open(mcp_config.data) as f:
-        data = json.load(f)
-
-    return {
-        "source": sources,
-        "results": data[sources],
-    }
+    engine = SearchEngine(sources=sources, query=query, max_results=max_results)
+    data = engine.run(data=mcp_config.data)
+    return data
 
 
 @mcp_server.tool
-async def syntesize(source_contents: list[str]) -> str:
+async def synthesize(search_results: list[dict[str, str]]) -> str:
     """
     **synthesize**
-    - Purpose: Combine multiple sources into coherent summary
+    - Purpose: Combine multiple search results into a coherent summary
     - Parameters:
-    - `source_contents` (list of strings): Source texts to synthesize
+    - `search_results` (list of dictionaries): Output from the `search` tool,
+      where each dictionary contains at least `title` and `description`
     - Returns: Synthesized text with inline citations
     """
-    if not source_contents:
+    if not search_results:
         return "No sources provided."
 
-    cleaned_sources = [
-        text.strip() for text in source_contents if text and text.strip()
-    ]
+    cleaned_sources = []
+
+    for item in search_results:
+        title = item.get("title", "").strip()
+        description = item.get("description", "").strip()
+
+        # Skip entries with no usable content
+        if not title and not description:
+            continue
+
+        # Combine title and description into a single text block
+        if title and description:
+            text = f"{title}: {description}"
+        else:
+            text = title or description
+
+        cleaned_sources.append(text)
 
     if not cleaned_sources:
         return "No valid source content provided."
@@ -130,31 +133,32 @@ async def syntesize(source_contents: list[str]) -> str:
     summary = " ".join(
         f"{text} [{idx}]" for idx, text in enumerate(cleaned_sources, start=1)
     )
+
     return summary
 
 
-# @mcp_server.prompt
-# async def analyze(synthesized_content: str, user_query: str) -> str:
-#     """
-#     **analyze**
-#     - Purpose: Analyze synthesized content for insights
-#     - Parameters:
-#     - `synthesized_content` (string): The synthesized text to analyze
-#     - `user_query` (string): User query for analysis focus
-#     - Returns: Analysis results based on user query
-#     """
+@mcp_server.tool
+async def analyze(synthesized_content: str, user_query: str) -> str:
+    """
+    **analyze**
+    - Purpose: Analyze synthesized content for insights
+    - Parameters:
+    - `synthesized_content` (string): The synthesized text to analyze
+    - `user_query` (string): User query for analysis focus
+    - Returns: Analysis results based on user query
+    """
 
-#     return f"""
-#         You are an expert analyst.
+    return f"""
+        You are an expert analyst.
 
-#         Analyze the synthesized content with respect to the user query.
+        Analyze the synthesized content with respect to the user query.
 
-#         User Query:
-#         {user_query}
+        User Query:
+        {user_query}
 
-#         Content:
-#         {synthesized_content}
-#     """
+        Content:
+        {synthesized_content}
+    """
 
 
 if __name__ == "__main__":
