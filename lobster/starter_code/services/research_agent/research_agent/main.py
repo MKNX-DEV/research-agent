@@ -22,7 +22,7 @@ from research_agent.dependencies import (
     get_mcp_tool_names,
     get_model,
 )
-from research_agent.interfaces import ResearchOutput, UserQuery, AgentDeps
+from research_agent.interfaces import AgentDeps, ResearchOutput, UserQuery
 from research_agent.prompts import RESEARCH_PROMPT
 from research_agent.utils import build_agent, lifespan
 
@@ -82,13 +82,13 @@ async def research(
         mcp_server=mcp_server,
         config=agent_config,
         output_type=ResearchOutput,
-        deps_type=AgentDeps
+        deps_type=AgentDeps,
     )
 
     async with agent:
         response = await agent.run(request.query, deps=mcp_tool_names)
 
-    return response
+    return response.output
 
 
 # async def call_tool_service(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:

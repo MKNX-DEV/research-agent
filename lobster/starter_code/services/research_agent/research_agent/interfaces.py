@@ -6,8 +6,8 @@ class UserQuery(BaseModel):
 
 
 class ResearchOutput(BaseModel):
-    research_ouput: str = Field(description="Research output")
+    research_output: str = Field(description="Research output")
 
 
 class AgentDeps(BaseModel):
-	mcp_tools: list
+    mcp_tools: list

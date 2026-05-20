@@ -80,6 +80,20 @@ async def health_check(request: Request):
 
 
 @mcp_server.tool
+async def discover_sources() -> list[str]:
+    """
+    **discover sources/topics**
+    - Purpose: Discover sources/topics available in mock data
+    """
+
+    logger.info("Called MCP tool 'discover_sources'")
+    engine = SearchEngine(data_path=mcp_config.data)
+    sources = engine.get_sources()
+    logger.info(f"Discovered sources: {sources}")
+    return sources
+
+
+@mcp_server.tool
 async def search(sources: str, query: str, max_results: int) -> list[dict[str, str]]:
     """
     **search**
@@ -90,9 +104,16 @@ async def search(sources: str, query: str, max_results: int) -> list[dict[str, s
     - `max_results` (int): Maximum number of results to return
     """
 
-    engine = SearchEngine(sources=sources, query=query, max_results=max_results)
-    data = engine.run(data=mcp_config.data)
-    return data
+    logger.info(
+        f"""
+        Called MCP tool 'search' with the following parameters:
+        - sources: {sources}
+        - query: {query}
+        - max_results: {max_results}
+        """
+    )
+    engine = SearchEngine(data_path=mcp_config.data)
+    return engine.search(source=sources, query=query, max_results=max_results)
 
 
 @mcp_server.tool
@@ -102,9 +123,12 @@ async def synthesize(search_results: list[dict[str, str]]) -> str:
     - Purpose: Combine multiple search results into a coherent summary
     - Parameters:
     - `search_results` (list of dictionaries): Output from the `search` tool,
-      where each dictionary contains at least `title` and `description`
+      where each dictionary contains at least `title` and `content`
     - Returns: Synthesized text with inline citations
     """
+
+    logger.info("Called MCP tool 'synthesize'")
+
     if not search_results:
         return "No sources provided."
 
@@ -112,17 +136,17 @@ async def synthesize(search_results: list[dict[str, str]]) -> str:
 
     for item in search_results:
         title = item.get("title", "").strip()
-        description = item.get("description", "").strip()
+        content = item.get("content", "").strip()
 
         # Skip entries with no usable content
-        if not title and not description:
+        if not title and not content:
             continue
 
         # Combine title and description into a single text block
-        if title and description:
-            text = f"{title}: {description}"
+        if title and content:
+            text = f"{title}: {content}"
         else:
-            text = title or description
+            text = title or content
 
         cleaned_sources.append(text)
 
@@ -146,6 +170,8 @@ async def analyze(synthesized_content: str, user_query: str) -> str:
     - `user_query` (string): User query for analysis focus
     - Returns: Analysis results based on user query
     """
+
+    logger.info("Called MCP tool analyze")
 
     return f"""
         You are an expert analyst.

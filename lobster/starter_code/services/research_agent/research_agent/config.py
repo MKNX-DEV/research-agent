@@ -13,7 +13,7 @@ class LogLevelConfig(BaseSettings):
 
 class AgentConfig(BaseSettings):
     model_config = SettingsConfigDict(case_sensitive=False, env_file=ENV_FILE)
-    llm_name: str = "openai/gpt-4.1"
+    llm_name: str = "openai/gpt-4.1-mini"
     api_key: str
     # llm_url: str
     retries: int = 3
