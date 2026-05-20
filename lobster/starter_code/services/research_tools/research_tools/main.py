@@ -71,7 +71,6 @@ logger = logging.getLogger(__name__)
 
 
 mcp_config = MCPConfig()
-
 mcp_server = FastMCP(name=mcp_config.server_name, on_duplicate=mcp_config.on_duplicate)
 
 

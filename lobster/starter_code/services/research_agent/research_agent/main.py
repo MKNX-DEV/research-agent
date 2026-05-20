@@ -6,64 +6,95 @@ This agent receives natural language research requests and uses the tool service
 to gather and synthesize information.
 """
 
-# from fastapi import FastAPI, HTTPException
+# import httpx
 # from fastapi.responses import JSONResponse
 import logging
-# from typing import Any
-# import httpx
-from pydantic_ai.providers.github import GitHubProvider
-from pydantic_ai.models import Model
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai import Agent
-from research_agent.config import AgentConfig
 
+# from typing import Any
+from fastapi import Depends, FastAPI  # , HTTPException
+from pydantic_ai.mcp import MCPToolset
+from pydantic_ai.models import Model
+
+from research_agent.config import AgentConfig
+from research_agent.dependencies import (
+    get_agent_config,
+    get_mcp_server,
+    get_mcp_tool_names,
+    get_model,
+)
+from research_agent.interfaces import ResearchOutput, UserQuery, AgentDeps
+from research_agent.prompts import RESEARCH_PROMPT
+from research_agent.utils import build_agent, lifespan
 
 # TODO: Import your common models
 # from common import AgentRequest, AgentResponse, MCPSpec, ToolRequest, ToolResponse, ...
-
-# app = FastAPI(
-#     title="Research Agent",
-#     description="Intelligent agent that orchestrates research tasks using available tools",
-#     version="1.0.0"
-# )
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# @app.get("/")
-# async def root():
-#     """Health check endpoint."""
-#     return {"message": "Research Agent is running", "status": "healthy"}
+app = FastAPI(
+    title="Research Agent",
+    description="Intelligent agent that orchestrates research tasks using available tools",
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
 
-# @app.post("/research")
-# async def research(request: dict[str, Any]):
-#     """
-#     Main research endpoint - accepts natural language research requests.
-    
-#     TODO: Implement the agent logic:
-#     1. Parse and understand the research request
-#     2. Decide which tools to use and in what sequence
-#     3. Call the tool service via MCP to gather information
-#     4. Synthesize results into a comprehensive research report
-#     5. Return structured response
-#     """
-#     # TODO: Implement agent reasoning and tool orchestration
-#     # Example flow:
-#     # 1. Use LLM to understand request and plan approach
-#     # 2. Call tool service /mcp/run/search with appropriate parameters
-#     # 3. Analyze results and decide if more searches are needed
-#     # 4. Call tool service /mcp/run/synthesize to combine results
-#     # 5. Generate final research report
-#     pass
+@app.get("/")
+async def root():
+    """Health check endpoint."""
+    return {"message": "Research Agent is running", "status": "healthy"}
+
+
+@app.post("/research")
+async def research(
+    request: UserQuery,
+    model: Model = Depends(get_model),
+    agent_config: AgentConfig = Depends(get_agent_config),
+    mcp_server: MCPToolset = Depends(get_mcp_server),
+    mcp_tool_names: AgentDeps = Depends(get_mcp_tool_names),
+) -> ResearchOutput:
+    """
+    Main research endpoint - accepts natural language research requests.
+
+    TODO: Implement the agent logic:
+    1. Parse and understand the research request
+    2. Decide which tools to use and in what sequence
+    3. Call the tool service via MCP to gather information
+    4. Synthesize results into a comprehensive research report
+    5. Return structured response
+    """
+    # TODO: Implement agent reasoning and tool orchestration
+    # Example flow:
+    # 1. Use LLM to understand request and plan approach
+    # 2. Call tool service /mcp/run/search with appropriate parameters
+    # 3. Analyze results and decide if more searches are needed
+    # 4. Call tool service /mcp/run/synthesize to combine results
+    # 5. Generate final research report
+
+    logger.info(f"Received user query: {request.query}")
+
+    agent = build_agent(
+        model=model,
+        prompt=RESEARCH_PROMPT,
+        mcp_server=mcp_server,
+        config=agent_config,
+        output_type=ResearchOutput,
+        deps_type=AgentDeps
+    )
+
+    async with agent:
+        response = await agent.run(request.query, deps=mcp_tool_names)
+
+    return response
 
 
 # async def call_tool_service(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
 #     """
 #     Helper function to call the tool service via MCP.
-    
+
 #     TODO: Implement HTTP client to call tool service endpoints.
 #     """
 #     # TODO: Make HTTP request to TOOL_SERVICE_URL/mcp/run/{tool_name}
@@ -77,23 +108,6 @@ logger = logging.getLogger(__name__)
 # - Tool orchestration logic
 
 
-# def connect_to_model(config) -> Model:
-# 	model = OpenAIChatModel(
-# 		model_name=config.llm_name,
-# 		provider=GitHubProvider(api_key=config.api_key),
-# 	)
-
-# 	return model
-
-config = AgentConfig()
-
-model = OpenAIChatModel(
-    model_name=config.llm_name,
-    provider=GitHubProvider(api_key=config.api_key),
-)
-agent = Agent(model)
-
-if __name__ == "__main__":
-    # import uvicorn
-    # uvicorn.run(app, host="0.0.0.0", port=8000)
-    print(agent.run_sync('What is the capital of Italy?'))
+# if __name__ == "__main__":
+# import uvicorn
+# uvicorn.run(app, host="0.0.0.0", port=8000)
