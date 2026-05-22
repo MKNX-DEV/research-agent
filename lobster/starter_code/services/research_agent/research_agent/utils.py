@@ -44,8 +44,16 @@ def build_agent(
     )
 
     @agent.system_prompt
-    def inject_tool_names(ctx: RunContext[AgentDeps]) -> str:
+    def _supply_tool_names(ctx: RunContext[AgentDeps]) -> str:
         return f"The mcp server tools are {ctx.deps.mcp_tools}."
+
+    @agent.system_prompt
+    def _add_context(ctx: RunContext[AgentDeps]) -> str:
+        return f"""
+        Research Depth: {ctx.deps.depth}
+        Preferred Sources: {ctx.deps.sources}
+        Maximum Results: {ctx.deps.max_results}
+        """
 
     return agent
 

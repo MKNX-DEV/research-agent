@@ -3,7 +3,6 @@ from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models import Model
 
 from research_agent.config import AgentConfig
-from research_agent.interfaces import AgentDeps
 
 
 def get_agent_config(request: Request) -> AgentConfig:
@@ -18,5 +17,5 @@ def get_mcp_server(request: Request) -> MCPToolset:
     return request.app.state.mcp_server
 
 
-def get_mcp_tool_names(request: Request) -> AgentDeps:
-    return AgentDeps(mcp_tools=request.app.state.mcp_tool_names)
+def get_mcp_tool_names(request: Request) -> list:
+    return request.app.state.mcp_tool_names

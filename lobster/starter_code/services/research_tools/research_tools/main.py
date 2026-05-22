@@ -7,28 +7,21 @@ This service exposes tools via MCP protocol for agents to use.
 
 # from fastapi import FastAPI, HTTPException
 import logging
+from textwrap import dedent
 
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
-
-# from typing import Any
 from fastmcp import FastMCP
+from pydantic import Field
 
-# TODO: Import your common models
-# from common import MCPSpec, ToolRequest, ToolResponse, ResearchResult, ResearchSynthesis, ...
 from research_tools.config import MCPConfig
+from research_tools.errors import NoSearchResultsError
+from research_tools.middleware import LoggingMiddleware
+from research_tools.models import SearchResponse
 from research_tools.utils import SearchEngine
 
-# app = FastAPI(
-#     title="Research Tool Service",
-#     description="MCP-compliant service providing research tools for agents",
-#     version="1.0.0"
-# )
-
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 # @app.get("/")
 # async def root():
@@ -36,42 +29,9 @@ logger = logging.getLogger(__name__)
 #     mcp_server.run(transport=mcp_config.transport)
 #     return {"message": "Research Tool Service is running", "status": "healthy"}
 
-
-# @app.get("/mcp/spec")
-# async def get_mcp_spec():
-#     """
-#     Return the MCP specification of available research tools.
-
-#     TODO: Implement this endpoint to return an MCPSpec object
-#     describing the research tools this service provides.
-#     """
-#     # TODO: Define your tool service specification
-#     # This should describe tools like 'search', 'synthesize', 'analyze'
-#     pass
-
-
-# @app.post("/mcp/run/{tool_name}")
-# async def execute_tool(tool_name: str, request: dict[str, Any]):
-#     """
-#     Execute a specific research tool via MCP protocol.
-
-#     TODO: Implement tool execution logic.
-#     Expected tools:
-#     - search: Search for information using mock data sources
-#     - synthesize: Synthesize multiple research results
-#     - analyze: Analyze research results for insights
-#     """
-#     # TODO: Implement tool routing and execution
-#     # Use the provided mock data sources
-#     # Return appropriate ToolResponse objects
-#     pass
-
-
-# TODO: Add any additional endpoints or helper functions you need
-
-
 mcp_config = MCPConfig()
 mcp_server = FastMCP(name=mcp_config.server_name, on_duplicate=mcp_config.on_duplicate)
+mcp_server.add_middleware(LoggingMiddleware())
 
 
 @mcp_server.custom_route("/health", methods=["GET"])
@@ -79,116 +39,102 @@ async def health_check(request: Request):
     return JSONResponse({"status": "healthy"})
 
 
-@mcp_server.tool
-async def discover_sources() -> list[str]:
-    """
-    **discover sources/topics**
-    - Purpose: Discover sources/topics available in mock data
-    """
-
-    logger.info("Called MCP tool 'discover_sources'")
+@mcp_server.tool(description="Discover topics available in the dataset")
+async def discover_topics() -> list[str]:
     engine = SearchEngine(data_path=mcp_config.data)
-    sources = engine.get_sources()
-    logger.info(f"Discovered sources: {sources}")
+    topics = engine.get_topics()
+    logger.info(f"Discovered topics: {topics}")
+    return topics
+
+
+@mcp_server.tool(
+    description="Discover available sources for a topic when the user specifies a source"
+)
+async def discover_sources(
+    topic: str = Field(description="Topic for which to retrieve available sources"),
+) -> list[str]:
+    engine = SearchEngine(data_path=mcp_config.data)
+    sources = engine.get_sources(topic=topic)
+    logger.info(f"Available sources for topic {topic}. Sources: {sources}.")
     return sources
 
 
-@mcp_server.tool
-async def search(sources: str, query: str, max_results: int) -> list[dict[str, str]]:
-    """
-    **search**
-    - Purpose: Search for information in mock data sources
-    - Parameters:
-    - `sources` (string): Knowledge base category to filter search
-    - `query` (string): Search query keyword
-    - `max_results` (int): Maximum number of results to return
-    """
-
-    logger.info(
+@mcp_server.tool(description="Extract the primary search keyword from the user query")
+async def extract_search_keyword(
+    query: str = Field(
+        description="User query from which to extract the primary search keyword"
+    ),
+) -> str:
+    return dedent(
         f"""
-        Called MCP tool 'search' with the following parameters:
-        - sources: {sources}
-        - query: {query}
-        - max_results: {max_results}
+        Extract the primary search keyword from the user query.
+        User Query: {query}
         """
     )
+
+
+@mcp_server.tool(description="Search the dataset for user-requested information")
+async def search(
+    topic: str = Field(description="Knowledge base topic to search within"),
+    keyword: str = Field(description="Primary search keyword"),
+    sources: list[str] | None = Field(description="Sources to search within"),
+    max_results: int = Field(description="Maximum number of results to return"),
+) -> SearchResponse:
+
     engine = SearchEngine(data_path=mcp_config.data)
-    return engine.search(source=sources, query=query, max_results=max_results)
-
-
-@mcp_server.tool
-async def synthesize(search_results: list[dict[str, str]]) -> str:
-    """
-    **synthesize**
-    - Purpose: Combine multiple search results into a coherent summary
-    - Parameters:
-    - `search_results` (list of dictionaries): Output from the `search` tool,
-      where each dictionary contains at least `title` and `content`
-    - Returns: Synthesized text with inline citations
-    """
-
-    logger.info("Called MCP tool 'synthesize'")
-
-    if not search_results:
-        return "No sources provided."
-
-    cleaned_sources = []
-
-    for item in search_results:
-        title = item.get("title", "").strip()
-        content = item.get("content", "").strip()
-
-        # Skip entries with no usable content
-        if not title and not content:
-            continue
-
-        # Combine title and description into a single text block
-        if title and content:
-            text = f"{title}: {content}"
-        else:
-            text = title or content
-
-        cleaned_sources.append(text)
-
-    if not cleaned_sources:
-        return "No valid source content provided."
-
-    summary = " ".join(
-        f"{text} [{idx}]" for idx, text in enumerate(cleaned_sources, start=1)
+    results = engine.search(
+        keyword=keyword, topic=topic, sources=sources, max_results=max_results
     )
 
+    if not results:
+        logger.info("Search returned no results")
+        search_response = SearchResponse(
+            status="no_results",
+            results=[],
+            message=("No matching documents were found for the provided query."),
+        )
+        raise NoSearchResultsError(
+            "No matching documents were found for the provided query."
+        )
+    else:
+        logger.info(f"Found research data: {results}")
+        search_response = SearchResponse(
+            status="success",
+            results=results,
+            message=f"Found {len(results)} matching result(s).",
+        )
+    return search_response
+
+
+@mcp_server.tool(description="Combine multiple search results into a coherent summary")
+async def synthesize(
+    search_results: list[str] = Field(description="Search results to synthesize"),
+) -> str:
+    """Returns: Synthesized text with inline citations."""
+    summary = " ".join(
+        f"{text} [{idx}]" for idx, text in enumerate(search_results, start=1)
+    )
     return summary
 
 
-@mcp_server.tool
-async def analyze(synthesized_content: str, user_query: str) -> str:
-    """
-    **analyze**
-    - Purpose: Analyze synthesized content for insights
-    - Parameters:
-    - `synthesized_content` (string): The synthesized text to analyze
-    - `user_query` (string): User query for analysis focus
-    - Returns: Analysis results based on user query
-    """
-
-    logger.info("Called MCP tool analyze")
-
-    return f"""
+@mcp_server.tool(description="Analyze synthesized content for insights")
+async def analyze(
+    synthesized_content: str = Field(description="Synthesized text to analyze"),
+    user_query: str = Field(description="User query defining the analysis focus"),
+) -> str:
+    """Returns: Analysis results based on the user query."""
+    return dedent(
+        f"""
         You are an expert analyst.
-
         Analyze the synthesized content with respect to the user query.
 
-        User Query:
-        {user_query}
-
-        Content:
-        {synthesized_content}
-    """
+        User Query: {user_query}
+        Content: {synthesized_content}
+        """
+    )
 
 
 if __name__ == "__main__":
-    # import uvicorn
-    # uvicorn.run(app, host="0.0.0.0", port=8001)
     mcp_server.run(
         transport=mcp_config.transport,
         host=mcp_config.host,

@@ -25,6 +25,7 @@ clean:
     find . -type d -name "__pycache__" -delete
     find . -type d -name ".pytest_cache" -delete
     find . -type f \( -name "*.tgz" -o -name "*.tar.gz" \) -delete
+    find . -type f -name "*.coverage" -delete
 
 # Run tests with coverage
 test:

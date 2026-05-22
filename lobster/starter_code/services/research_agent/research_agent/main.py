@@ -22,7 +22,7 @@ from research_agent.dependencies import (
     get_mcp_tool_names,
     get_model,
 )
-from research_agent.interfaces import AgentDeps, ResearchOutput, UserQuery
+from research_agent.interfaces import AgentDeps, ResearchOutput, ResearchQuery
 from research_agent.prompts import RESEARCH_PROMPT
 from research_agent.utils import build_agent, lifespan
 
@@ -50,7 +50,7 @@ async def root():
 
 @app.post("/research")
 async def research(
-    request: UserQuery,
+    request: ResearchQuery,
     model: Model = Depends(get_model),
     agent_config: AgentConfig = Depends(get_agent_config),
     mcp_server: MCPToolset = Depends(get_mcp_server),
@@ -85,8 +85,15 @@ async def research(
         deps_type=AgentDeps,
     )
 
+    agent_deps = AgentDeps(
+        mcp_tools=mcp_tool_names,
+        depth=request.depth,
+        sources=request.sources,
+        max_results=request.max_results,
+    )
+
     async with agent:
-        response = await agent.run(request.query, deps=mcp_tool_names)
+        response = await agent.run(request.query, deps=agent_deps)
 
     return response.output
 
