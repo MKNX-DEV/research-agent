@@ -70,5 +70,5 @@ kube-down:
 kube-dashboard:
     minikube dashboard >/dev/null 2>&1 &
 
-main:
+run:
     uv run python -m research_tools.main

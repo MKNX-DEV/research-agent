@@ -15,7 +15,7 @@ from fastmcp import FastMCP
 from pydantic import Field
 
 from research_tools.config import MCPConfig
-from research_tools.errors import NoSearchResultsError
+from research_tools.exceptions import NoSearchResultsError
 from research_tools.middleware import LoggingMiddleware
 from research_tools.models import SearchResponse
 from research_tools.utils import SearchEngine

@@ -14,8 +14,7 @@ class SearchEngine:
             return json.load(f)
 
     def get_topics(self) -> list[str]:
-        topics = list(self.data.keys())
-        return topics
+        return list(self.data.keys())
 
     def get_sources(self, topic: str) -> list[str]:
         return list(set([item["source"] for item in self.data[topic]]))

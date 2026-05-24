@@ -10,7 +10,6 @@ to gather and synthesize information.
 # from fastapi.responses import JSONResponse
 import logging
 
-# from typing import Any
 from fastapi import Depends, FastAPI  # , HTTPException
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models import Model
@@ -22,14 +21,10 @@ from research_agent.dependencies import (
     get_mcp_tool_names,
     get_model,
 )
-from research_agent.interfaces import AgentDeps, ResearchOutput, ResearchQuery
+from research_agent.models import AgentDeps, ResearchOutput, ResearchQuery
 from research_agent.prompts import RESEARCH_PROMPT
 from research_agent.utils import build_agent, lifespan
 
-# TODO: Import your common models
-# from common import AgentRequest, AgentResponse, MCPSpec, ToolRequest, ToolResponse, ...
-
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -54,7 +49,7 @@ async def research(
     model: Model = Depends(get_model),
     agent_config: AgentConfig = Depends(get_agent_config),
     mcp_server: MCPToolset = Depends(get_mcp_server),
-    mcp_tool_names: AgentDeps = Depends(get_mcp_tool_names),
+    mcp_tool_names: list = Depends(get_mcp_tool_names),
 ) -> ResearchOutput:
     """
     Main research endpoint - accepts natural language research requests.
@@ -87,7 +82,6 @@ async def research(
 
     agent_deps = AgentDeps(
         mcp_tools=mcp_tool_names,
-        depth=request.depth,
         sources=request.sources,
         max_results=request.max_results,
     )
@@ -96,25 +90,3 @@ async def research(
         response = await agent.run(request.query, deps=agent_deps)
 
     return response.output
-
-
-# async def call_tool_service(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
-#     """
-#     Helper function to call the tool service via MCP.
-
-#     TODO: Implement HTTP client to call tool service endpoints.
-#     """
-#     # TODO: Make HTTP request to TOOL_SERVICE_URL/mcp/run/{tool_name}
-#     # Handle errors and timeouts appropriately
-#     pass
-
-
-# TODO: Add any additional helper functions for:
-# - LLM interaction and prompting
-# - Result processing and analysis
-# - Tool orchestration logic
-
-
-# if __name__ == "__main__":
-# import uvicorn
-# uvicorn.run(app, host="0.0.0.0", port=8000)

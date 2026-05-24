@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any  # , Literal
 
 from pydantic import BaseModel, Field
 
@@ -26,9 +26,9 @@ class ResearchQuery(BaseModel):
     """Research query model."""
 
     query: str = Field(description="User query to pass to the agent")
-    depth: Literal["shallow", "medium", "deep"] = Field(
-        default="medium", description="Research depth"
-    )
+    # depth: Literal["shallow", "medium", "deep"] = Field(
+    #     default="medium", description="Research depth"
+    # )
     sources: list[str] | None = Field(
         default=None, description="Preferred sources or domains"
     )
@@ -40,6 +40,5 @@ class ResearchQuery(BaseModel):
 @dataclass
 class AgentDeps:
     mcp_tools: list
-    depth: Literal["shallow", "medium", "deep"]
     sources: list[str]
     max_results: int
