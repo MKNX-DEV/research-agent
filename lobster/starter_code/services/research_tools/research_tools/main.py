@@ -14,8 +14,9 @@ from fastmcp import FastMCP
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 #from fastmcp.server.middleware.rate_limiting import RateLimitingMiddleware
 from pydantic import Field
+from fastmcp.exceptions import ToolError
 
-from research_tools.exceptions import NoSearchResultsError
+from research_tools.exceptions import NoSearchResultsError, DatasetNotAvailableError
 from research_tools.models import SearchResponse
 from research_tools.utils import LoggingMiddleware, SearchEngine, load_config
 
@@ -42,10 +43,17 @@ async def health_check(request: Request):
 
 @server.tool(description="Discover topics available in the dataset")
 async def discover_topics() -> list[str]:
-    engine = SearchEngine(data_path=config.data)
-    topics = engine.get_topics()
-    logger.info(f"Discovered topics: {topics}")
-    return topics
+    try:
+        engine = SearchEngine(data_path=config.data)
+        topics = engine.get_topics()
+        logger.info(f"Discovered topics: {topics}")
+        return topics
+    except DatasetNotAvailableError:
+        logger.error("Dataset unavailable")
+        raise ToolError("Dataset is currently unavailable.")
+    except Exception:
+        logger.error("Unexpected error in discover_topics")
+        raise ToolError("Internal server error.")
 
 
 @server.tool(
@@ -54,10 +62,17 @@ async def discover_topics() -> list[str]:
 async def discover_sources(
     topic: str = Field(description="Topic for which to retrieve available sources"),
 ) -> list[str]:
-    engine = SearchEngine(data_path=config.data)
-    sources = engine.get_sources(topic=topic)
-    logger.info(f"Available sources for topic {topic}. Sources: {sources}.")
-    return sources
+    try:
+        engine = SearchEngine(data_path=config.data)
+        sources = engine.get_sources(topic=topic)
+        logger.info(f"Available sources for topic {topic}. Sources: {sources}.")
+        return sources
+    except DatasetNotAvailableError:
+        logger.error("Dataset unavailable")
+        raise ToolError("Dataset is currently unavailable.")
+    except Exception:
+        logger.error("Unexpected error in discover_topics")
+        raise ToolError("Internal server error.")
 
 
 @server.tool(description="Extract the primary search keyword from the user query")

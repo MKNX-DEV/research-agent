@@ -173,7 +173,7 @@ class OutputComposer:
     @staticmethod
     def build_unknown_error_output(error_msg: str) -> ResearchEndpointOutput:
         return ResearchEndpointOutput(
-            research_output=[],
+            research_output=None,
             status="error",
             reason=error_msg,
             message="Internal processing error.",
@@ -182,7 +182,7 @@ class OutputComposer:
     @staticmethod
     def build_empty_output() -> ResearchEndpointOutput:
         return ResearchEndpointOutput(
-            research_output=[],
+            research_output=None,
             status="no_results",
             reason="",
             message="No information found on your request.",
@@ -201,8 +201,6 @@ class OutputComposer:
     def handle_search_error(cls, e: Exception | RuntimeError) -> ResearchEndpointOutput:
         error_msg = str(e)
         logger.error(f"Agent execution error: {error_msg}")
-
-        # Unwrap PydanticAI exceptions to find the real cause (e.g., from the tool)
         root_cause = e.__cause__ if e.__cause__ else e
         error_msg = str(root_cause)
         logger.error(f"Error in MCP server: {error_msg}")

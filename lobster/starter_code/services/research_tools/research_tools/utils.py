@@ -8,7 +8,7 @@ from fastmcp.server.middleware import Middleware, MiddlewareContext
 from pydantic import ValidationError
 
 from research_tools.config import MCPConfig
-from research_tools.exceptions import ConfigurationError
+from research_tools.exceptions import ConfigurationError, DatasetNotAvailableError
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +42,8 @@ class SearchEngine:
 
     @staticmethod
     def _read(path: Path) -> dict[str, list[dict[str, Any]]]:
+        if not path.exists():
+            raise DatasetNotAvailableError(f"Dataset does not exist: {path}")
         with path.open() as f:
             return json.load(f)
 

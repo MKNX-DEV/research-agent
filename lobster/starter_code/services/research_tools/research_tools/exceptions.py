@@ -4,3 +4,11 @@ class NoSearchResultsError(Exception):
 
 class ConfigurationError(Exception):
     pass
+
+
+class DatasetNotAvailableError(Exception):
+    pass
+
+
+class InvalidDatasetError(Exception):
+    pass

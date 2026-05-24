@@ -9,7 +9,7 @@ class ResearchAgentOutput(BaseModel):
 
 
 class ResearchEndpointOutput(BaseModel):
-    research_output: str = Field(description="Research output")
+    research_output: str | None = Field(description="Research output")
     status: Literal["success", "no_results", "error"] = Field(
         default="success",
         description=(
