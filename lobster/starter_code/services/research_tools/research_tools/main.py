@@ -12,7 +12,7 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
-from fastmcp.server.middleware.rate_limiting import RateLimitingMiddleware
+#from fastmcp.server.middleware.rate_limiting import RateLimitingMiddleware
 from pydantic import Field
 
 from research_tools.exceptions import NoSearchResultsError
@@ -22,39 +22,45 @@ from research_tools.utils import LoggingMiddleware, SearchEngine, load_config
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-mcp_config = load_config()
-mcp_server = FastMCP(name=mcp_config.server_name, on_duplicate=mcp_config.on_duplicate)
-mcp_server.add_middleware(ErrorHandlingMiddleware())
-#mcp_server.add_middleware(RateLimitingMiddleware())
-mcp_server.add_middleware(LoggingMiddleware())
+config = load_config()
+server = FastMCP(name=config.server_name, on_duplicate=config.on_duplicate)
+
+server.add_middleware(ErrorHandlingMiddleware(
+    include_traceback=True,
+    transform_errors=True
+    )
+)
+
+#server.add_middleware(RateLimitingMiddleware())
+server.add_middleware(LoggingMiddleware())
 
 
-@mcp_server.custom_route("/health", methods=["GET"])
+@server.custom_route("/health", methods=["GET"])
 async def health_check(request: Request):
     return JSONResponse({"status": "healthy"})
 
 
-@mcp_server.tool(description="Discover topics available in the dataset")
+@server.tool(description="Discover topics available in the dataset")
 async def discover_topics() -> list[str]:
-    engine = SearchEngine(data_path=mcp_config.data)
+    engine = SearchEngine(data_path=config.data)
     topics = engine.get_topics()
     logger.info(f"Discovered topics: {topics}")
     return topics
 
 
-@mcp_server.tool(
+@server.tool(
     description="Discover available sources for a topic when the user specifies a source"
 )
 async def discover_sources(
     topic: str = Field(description="Topic for which to retrieve available sources"),
 ) -> list[str]:
-    engine = SearchEngine(data_path=mcp_config.data)
+    engine = SearchEngine(data_path=config.data)
     sources = engine.get_sources(topic=topic)
     logger.info(f"Available sources for topic {topic}. Sources: {sources}.")
     return sources
 
 
-@mcp_server.tool(description="Extract the primary search keyword from the user query")
+@server.tool(description="Extract the primary search keyword from the user query")
 async def extract_search_keyword(
     query: str = Field(
         description="User query from which to extract the primary search keyword"
@@ -68,7 +74,7 @@ async def extract_search_keyword(
     )
 
 
-@mcp_server.tool(description="Search the dataset for user-requested information")
+@server.tool(description="Search the dataset for user-requested information")
 async def search(
     topic: str = Field(description="Knowledge base topic to search within"),
     keyword: str = Field(description="Primary search keyword"),
@@ -76,7 +82,7 @@ async def search(
     max_results: int = Field(description="Maximum number of results to return"),
 ) -> SearchResponse:
 
-    engine = SearchEngine(data_path=mcp_config.data)
+    engine = SearchEngine(data_path=config.data)
     results = engine.search(
         keyword=keyword, topic=topic, sources=sources, max_results=max_results
     )
@@ -101,7 +107,7 @@ async def search(
     return search_response
 
 
-@mcp_server.tool(description="Combine multiple search results into a coherent summary")
+@server.tool(description="Combine multiple search results into a coherent summary")
 async def synthesize(
     search_results: list[str] = Field(description="Search results to synthesize"),
 ) -> str:
@@ -112,7 +118,7 @@ async def synthesize(
     return summary
 
 
-@mcp_server.tool(description="Analyze synthesized content for insights")
+@server.tool(description="Analyze synthesized content for insights")
 async def analyze(
     synthesized_content: str = Field(description="Synthesized text to analyze"),
     user_query: str = Field(description="User query defining the analysis focus"),
@@ -130,8 +136,8 @@ async def analyze(
 
 
 if __name__ == "__main__":
-    mcp_server.run(
-        transport=mcp_config.transport,
-        host=mcp_config.host,
-        port=mcp_config.port,
+    server.run(
+        transport=config.transport,
+        host=config.host,
+        port=config.port,
     )

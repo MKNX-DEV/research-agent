@@ -8,7 +8,6 @@ to gather and synthesize information.
 
 # import httpx
 # from fastapi.responses import JSONResponse
-import logging
 
 from fastapi import Depends, FastAPI  # , HTTPException
 from pydantic_ai.mcp import MCPToolset
@@ -21,13 +20,16 @@ from research_agent.dependencies import (
     get_mcp_toolset,
     get_model,
 )
-from research_agent.models import AgentDeps, ResearchOutput, ResearchQuery
+from research_agent.models import (
+    AgentDeps,
+    ResearchAgentOutput,
+    ResearchEndpointOutput,
+    ResearchQuery,
+)
 from research_agent.prompts import RESEARCH_PROMPT
-from research_agent.utils import build_agent, lifespan
+from research_agent.utils import OutputComposer, build_agent, configure_logger, lifespan
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+logger = configure_logger()
 
 app = FastAPI(
     title="Research Agent",
@@ -50,7 +52,7 @@ async def research(
     agent_config: AgentConfig = Depends(get_agent_config),
     mcp_toolset: MCPToolset = Depends(get_mcp_toolset),
     mcp_tool_info: list = Depends(get_mcp_tool_info),
-) -> ResearchOutput:
+) -> ResearchEndpointOutput:
     """
     Main research endpoint - accepts natural language research requests.
 
@@ -76,7 +78,7 @@ async def research(
         prompt=RESEARCH_PROMPT,
         mcp_server=mcp_toolset,
         config=agent_config,
-        output_type=ResearchOutput,
+        output_type=ResearchAgentOutput,
         deps_type=AgentDeps,
     )
 
@@ -86,7 +88,10 @@ async def research(
         max_results=request.max_results,
     )
 
-    async with agent:
-        response = await agent.run(request.query, deps=agent_deps)
+    try:
+        async with agent:
+            response = await agent.run(request.query, deps=agent_deps)
+        return OutputComposer.build_output(data=response.output.research_output)
 
-    return response.output
+    except Exception as e:
+        return OutputComposer.handle_search_error(e)

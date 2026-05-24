@@ -1,11 +1,27 @@
 from dataclasses import dataclass
-from typing import Any  # , Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 
-class ResearchOutput(BaseModel):
+class ResearchAgentOutput(BaseModel):
     research_output: str = Field(description="Research output")
+
+
+class ResearchEndpointOutput(BaseModel):
+    research_output: str = Field(description="Research output")
+    status: Literal["success", "no_results", "error"] = Field(
+        default="success",
+        description=(
+            """
+			High-level processing result: 
+			'success' – query processed; 
+			'no_results' – processed but nothing found; 
+			'error' – internal error.
+			"""
+        ),
+    )
+    reason: str | None = Field(default=None, description=(""))
 
 
 class ToolRequest(BaseModel):

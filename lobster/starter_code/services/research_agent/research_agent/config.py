@@ -9,7 +9,7 @@ ENV_FILE = ROOT.parent / ".env"
 
 
 class LogLevelConfig(BaseSettings):
-    log_level: Literal["debug", "info", "error", "warning"] = "info"
+    log_level: Literal["DEBUG", "INFO"] = "INFO"
 
 
 class AgentConfig(BaseSettings):

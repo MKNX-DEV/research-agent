@@ -11,17 +11,33 @@ from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.github import GitHubProvider
+from uvicorn.logging import DefaultFormatter
 
-from research_agent.config import AgentConfig
+from research_agent.config import AgentConfig, LogLevelConfig
 from research_agent.exceptions import (
     ConfigurationError,
     MCPConnectionError,
     ModelConnectionError,
 )
-from research_agent.models import AgentDeps
+from research_agent.models import AgentDeps, ResearchEndpointOutput
 
 logger = logging.getLogger(__name__)
 LOGGING_LEVEL_MAP = logging.getLevelNamesMapping()
+
+
+def configure_logger():
+    handler = logging.StreamHandler()
+    handler.setFormatter(
+        DefaultFormatter(
+            fmt="%(levelprefix)s %(name)s: %(message)s",
+            use_colors=True,
+        )
+    )
+
+    logger = logging.getLogger("research_agent")
+    logger.setLevel(level=getattr(logging, LogLevelConfig().log_level))
+    logger.addHandler(handler)
+    return logger
 
 
 def load_config() -> AgentConfig:
@@ -73,7 +89,8 @@ def create_mcp_toolset(config: AgentConfig, log_handler) -> MCPToolset:
 
 async def verify_mcp_connection(toolset: MCPToolset) -> None:
     try:
-        await toolset.client.ping()
+        async with toolset:
+            await toolset.client.ping()
         logger.info("Connected to MCP server")
 
     except Exception as e:
@@ -83,7 +100,8 @@ async def verify_mcp_connection(toolset: MCPToolset) -> None:
 
 async def get_mcp_tool_info(toolset: MCPToolset) -> list:
     try:
-        mcp_tool_info = await toolset.list_tools()
+        async with toolset:
+            mcp_tool_info = await toolset.list_tools()
         tool_names = [tool.name for tool in mcp_tool_info]
         logger.info(f"Retrieved {len(mcp_tool_info)} MCP tools. They are: {tool_names}")
         return mcp_tool_info
@@ -99,6 +117,25 @@ async def log_handler(message: LogMessage) -> None:
     extra = message.data.get("extra")
     level = LOGGING_LEVEL_MAP.get(message.level.upper(), logging.INFO)
     logger.log(level, msg, extra=extra)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        app.state.agent_config = load_config()
+        app.state.model = create_model_client(app.state.agent_config)
+
+        app.state.mcp_toolset = create_mcp_toolset(
+            config=app.state.agent_config, log_handler=log_handler
+        )
+
+        await verify_mcp_connection(app.state.mcp_toolset)
+        app.state.mcp_tool_info = await get_mcp_tool_info(app.state.mcp_toolset)
+
+        yield
+
+    except Exception:
+        logger.error("Application startup failed")
 
 
 def build_agent(
@@ -119,7 +156,7 @@ def build_agent(
     )
 
     @agent.system_prompt
-    def _supply_tool_names(ctx: RunContext[AgentDeps]) -> str:
+    def _supply_tool_info(ctx: RunContext[AgentDeps]) -> str:
         return f"The mcp server tools are {ctx.deps.mcp_tools}."
 
     @agent.system_prompt
@@ -132,22 +169,41 @@ def build_agent(
     return agent
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    try:
-        app.state.agent_config = load_config()
-        app.state.model = create_model_client(app.state.agent_config)
-
-        app.state.mcp_toolset = create_mcp_toolset(
-            config=app.state.agent_config, log_handler=log_handler
+class OutputComposer:
+    @staticmethod
+    def build_unknown_error_output(error_msg: str) -> ResearchEndpointOutput:
+        return ResearchEndpointOutput(
+            research_output=[],
+            status="error",
+            reason=error_msg,
+            message="Internal processing error.",
         )
 
-        async with app.state.mcp_toolset:
-            await verify_mcp_connection(app.state.mcp_toolset)
-            app.state.mcp_tool_info = await get_mcp_tool_info(app.state.mcp_toolset)
+    @staticmethod
+    def build_empty_output() -> ResearchEndpointOutput:
+        return ResearchEndpointOutput(
+            research_output=[],
+            status="no_results",
+            reason="",
+            message="No information found on your request.",
+        )
 
-        logger.info("Application startup completed")
-        yield
+    @staticmethod
+    def build_output(data) -> ResearchEndpointOutput:
+        return ResearchEndpointOutput(
+            research_output=data,
+            status="success",
+            reason="",
+            message="Research completed",
+        )
 
-    except Exception:
-        logger.error("Application startup failed")
+    @classmethod
+    def handle_search_error(cls, e: Exception | RuntimeError) -> ResearchEndpointOutput:
+        error_msg = str(e)
+        logger.error(f"Agent execution error: {error_msg}")
+
+        # Unwrap PydanticAI exceptions to find the real cause (e.g., from the tool)
+        root_cause = e.__cause__ if e.__cause__ else e
+        error_msg = str(root_cause)
+        logger.error(f"Error in MCP server: {error_msg}")
+        return cls.build_unknown_error_output(error_msg)
