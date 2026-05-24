@@ -11,12 +11,11 @@ from textwrap import dedent
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
-from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
-#from fastmcp.server.middleware.rate_limiting import RateLimitingMiddleware
-from pydantic import Field
 from fastmcp.exceptions import ToolError
+from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
+from pydantic import Field
 
-from research_tools.exceptions import NoSearchResultsError, DatasetNotAvailableError
+from research_tools.exceptions import DatasetNotAvailableError, NoSearchResultsError
 from research_tools.models import SearchResponse
 from research_tools.utils import LoggingMiddleware, SearchEngine, load_config
 
@@ -26,13 +25,10 @@ logger = logging.getLogger(__name__)
 config = load_config()
 server = FastMCP(name=config.server_name, on_duplicate=config.on_duplicate)
 
-server.add_middleware(ErrorHandlingMiddleware(
-    include_traceback=True,
-    transform_errors=True
-    )
+server.add_middleware(
+    ErrorHandlingMiddleware(include_traceback=True, transform_errors=True)
 )
 
-#server.add_middleware(RateLimitingMiddleware())
 server.add_middleware(LoggingMiddleware())
 
 
