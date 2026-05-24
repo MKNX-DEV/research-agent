@@ -5,32 +5,27 @@ This is a template - feel free to completely rewrite or restructure as needed.
 This service exposes tools via MCP protocol for agents to use.
 """
 
-# from fastapi import FastAPI, HTTPException
 import logging
 from textwrap import dedent
 
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
+from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
+from fastmcp.server.middleware.rate_limiting import RateLimitingMiddleware
 from pydantic import Field
 
-from research_tools.config import MCPConfig
 from research_tools.exceptions import NoSearchResultsError
-from research_tools.middleware import LoggingMiddleware
 from research_tools.models import SearchResponse
-from research_tools.utils import SearchEngine
+from research_tools.utils import LoggingMiddleware, SearchEngine, load_config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# @app.get("/")
-# async def root():
-#     """Health check endpoint."""
-#     mcp_server.run(transport=mcp_config.transport)
-#     return {"message": "Research Tool Service is running", "status": "healthy"}
-
-mcp_config = MCPConfig()
+mcp_config = load_config()
 mcp_server = FastMCP(name=mcp_config.server_name, on_duplicate=mcp_config.on_duplicate)
+mcp_server.add_middleware(ErrorHandlingMiddleware())
+#mcp_server.add_middleware(RateLimitingMiddleware())
 mcp_server.add_middleware(LoggingMiddleware())
 
 

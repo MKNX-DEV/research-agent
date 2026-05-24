@@ -17,8 +17,8 @@ from pydantic_ai.models import Model
 from research_agent.config import AgentConfig
 from research_agent.dependencies import (
     get_agent_config,
-    get_mcp_server,
-    get_mcp_tool_names,
+    get_mcp_tool_info,
+    get_mcp_toolset,
     get_model,
 )
 from research_agent.models import AgentDeps, ResearchOutput, ResearchQuery
@@ -48,8 +48,8 @@ async def research(
     request: ResearchQuery,
     model: Model = Depends(get_model),
     agent_config: AgentConfig = Depends(get_agent_config),
-    mcp_server: MCPToolset = Depends(get_mcp_server),
-    mcp_tool_names: list = Depends(get_mcp_tool_names),
+    mcp_toolset: MCPToolset = Depends(get_mcp_toolset),
+    mcp_tool_info: list = Depends(get_mcp_tool_info),
 ) -> ResearchOutput:
     """
     Main research endpoint - accepts natural language research requests.
@@ -74,14 +74,14 @@ async def research(
     agent = build_agent(
         model=model,
         prompt=RESEARCH_PROMPT,
-        mcp_server=mcp_server,
+        mcp_server=mcp_toolset,
         config=agent_config,
         output_type=ResearchOutput,
         deps_type=AgentDeps,
     )
 
     agent_deps = AgentDeps(
-        mcp_tools=mcp_tool_names,
+        mcp_tools=mcp_tool_info,
         sources=request.sources,
         max_results=request.max_results,
     )

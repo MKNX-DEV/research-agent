@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic import HttpUrl, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -8,13 +9,12 @@ ENV_FILE = ROOT.parent / ".env"
 
 
 class LogLevelConfig(BaseSettings):
-    log_level: str
+    log_level: Literal["debug", "info", "error", "warning"] = "info"
 
 
 class AgentConfig(BaseSettings):
     model_config = SettingsConfigDict(case_sensitive=False, env_file=ENV_FILE)
     llm_name: str = "openai/gpt-4.1-mini"
     api_key: SecretStr
-    # llm_url: str
     retries: int = 3
     mcp_url: HttpUrl = "http://localhost:8001/mcp"

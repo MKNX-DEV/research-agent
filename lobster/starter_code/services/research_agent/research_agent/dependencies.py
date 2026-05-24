@@ -13,9 +13,9 @@ def get_model(request: Request) -> Model:
     return request.app.state.model
 
 
-def get_mcp_server(request: Request) -> MCPToolset:
-    return request.app.state.mcp_server
+def get_mcp_toolset(request: Request) -> MCPToolset:
+    return request.app.state.mcp_toolset
 
 
-def get_mcp_tool_names(request: Request) -> list:
-    return request.app.state.mcp_tool_names
+def get_mcp_tool_info(request: Request) -> list:
+    return request.app.state.mcp_tool_info

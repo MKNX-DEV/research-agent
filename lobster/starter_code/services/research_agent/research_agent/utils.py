@@ -33,25 +33,24 @@ def load_config() -> AgentConfig:
     except ValidationError as e:
         invalid_fields = [".".join(map(str, err["loc"])) for err in e.errors()]
         logger.error(f"Invalid configuration: {invalid_fields}")
-        raise ConfigurationError("Missing or invalid environment variables") from e    
+        raise ConfigurationError("Missing or invalid environment variables") from e
 
 
 def create_model_client(config: AgentConfig) -> Model:
     try:
         model = OpenAIChatModel(
             model_name=config.llm_name,
-            provider=GitHubProvider(api_key=config.api_key),
+            provider=GitHubProvider(api_key=config.api_key.get_secret_value()),
         )
 
         logger.info(f"Initialized model client for the {config.llm_name} model")
         return model
-    
+
     except Exception as e:
         logger.error("Failed to initialize model client")
 
         raise ModelConnectionError(
-            f"Could not initialize model "
-            f"{config.llm_name}"
+            f"Could not initialize model {config.llm_name}"
         ) from e
 
 
@@ -64,20 +63,17 @@ def create_mcp_toolset(config: AgentConfig, log_handler) -> MCPToolset:
         toolset = MCPToolset(client)
         logger.info(f"Initialized MCP client for MCP server at {config.mcp_url}")
         return toolset
-    
+
     except Exception as e:
         logger.error("Failed to initialize MCP client")
         raise MCPConnectionError(
-            f"Could not initialize MCP client "
-            f"for MCP server at {config.mcp_url}"
+            f"Could not initialize MCP client for MCP server at {config.mcp_url}"
         ) from e
-    
+
 
 async def verify_mcp_connection(toolset: MCPToolset) -> None:
     try:
-        async with toolset:
-            await toolset.client.ping()
-
+        await toolset.client.ping()
         logger.info("Connected to MCP server")
 
     except Exception as e:
@@ -85,13 +81,13 @@ async def verify_mcp_connection(toolset: MCPToolset) -> None:
         raise MCPConnectionError("Could not connect to MCP server") from e
 
 
-async def get_mcp_tool_info(mcp_client: MCPToolset) -> list:
+async def get_mcp_tool_info(toolset: MCPToolset) -> list:
     try:
-        mcp_tool_info = await mcp_client.list_tools()
+        mcp_tool_info = await toolset.list_tools()
         tool_names = [tool.name for tool in mcp_tool_info]
         logger.info(f"Retrieved {len(mcp_tool_info)} MCP tools. They are: {tool_names}")
         return mcp_tool_info
-    
+
     except Exception as e:
         logger.error("Failed to retrieve MCP tools")
         raise MCPConnectionError("Unable to retrieve MCP tools") from e
@@ -141,22 +137,17 @@ async def lifespan(app: FastAPI):
     try:
         app.state.agent_config = load_config()
         app.state.model = create_model_client(app.state.agent_config)
-        
-        app.state.mcp_client = create_mcp_toolset(
+
+        app.state.mcp_toolset = create_mcp_toolset(
             config=app.state.agent_config, log_handler=log_handler
         )
 
-        await verify_mcp_connection(app.state.mcp_client)
-
-        async with app.state.mcp_client:
-            app.state.mcp_tool_info = await get_mcp_tool_info(app.state.mcp_client)
+        async with app.state.mcp_toolset:
+            await verify_mcp_connection(app.state.mcp_toolset)
+            app.state.mcp_tool_info = await get_mcp_tool_info(app.state.mcp_toolset)
 
         logger.info("Application startup completed")
+        yield
 
     except Exception:
         logger.error("Application startup failed")
-    
-    try:
-        yield
-    finally:
-        logger.info("Application shutting down")

@@ -1,7 +1,39 @@
 import json
+import logging
 from itertools import islice
 from pathlib import Path
 from typing import Any
+
+from fastmcp.server.middleware import Middleware, MiddlewareContext
+from pydantic import ValidationError
+
+from research_tools.config import MCPConfig
+from research_tools.exceptions import ConfigurationError
+
+logger = logging.getLogger(__name__)
+
+
+def load_config() -> MCPConfig:
+    try:
+        config = MCPConfig()
+        logger.info("Application configuration loaded")
+        return config
+
+    except ValidationError as e:
+        invalid_fields = [".".join(map(str, err["loc"])) for err in e.errors()]
+        logger.error(f"Invalid configuration: {invalid_fields}")
+        raise ConfigurationError("Missing or invalid environment variables") from e
+
+
+class LoggingMiddleware(Middleware):
+    async def on_call_tool(self, context: MiddlewareContext, call_next):
+        tool_name = context.message.name
+        args = context.message.arguments
+        log_message = f"Called MCP tool {tool_name} with arguments {args}"
+        logger.info(log_message)
+        await context.fastmcp_context.info(log_message)
+        result = await call_next(context)
+        return result
 
 
 class SearchEngine:
