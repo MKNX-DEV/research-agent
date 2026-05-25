@@ -91,7 +91,7 @@ async def verify_mcp_connection(toolset: MCPToolset) -> None:
     try:
         async with toolset:
             await toolset.client.ping()
-        logger.info("Connected to MCP server")
+        logger.info("Verified the MCP server connection")
 
     except Exception as e:
         logger.error("Failed to connect to MCP server")

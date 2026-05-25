@@ -6,11 +6,31 @@ from typing import Any
 
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from pydantic import ValidationError
+from uvicorn.logging import DefaultFormatter
 
-from research_tools.config import MCPConfig
-from research_tools.exceptions import ConfigurationError, DatasetNotAvailableError
+from research_tools.config import LogLevelConfig, MCPConfig
+from research_tools.exceptions import (
+    ConfigurationError,
+    DatasetNotAvailableError,
+    NoSearchResultsError,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def configure_logger(title: str) -> logging.Logger:
+    handler = logging.StreamHandler()
+    handler.setFormatter(
+        DefaultFormatter(
+            fmt="%(levelprefix)s %(name)s: %(message)s",
+            use_colors=True,
+        )
+    )
+
+    logger = logging.getLogger(title)
+    logger.setLevel(level=getattr(logging, LogLevelConfig().log_level))
+    logger.addHandler(handler)
+    return logger
 
 
 def load_config() -> MCPConfig:
@@ -37,73 +57,70 @@ class LoggingMiddleware(Middleware):
 
 
 class SearchEngine:
-    def __init__(self, data_path: Path):
-        self.data = self._read(data_path)
+    def __init__(self, keyword: str, sources: list[str] | None, max_results: int):
+        self.keyword = keyword
+        self.sources = sources
+        self.max_results = max_results
 
     @staticmethod
     def _read(path: Path) -> dict[str, list[dict[str, Any]]]:
         if not path.exists():
             raise DatasetNotAvailableError(f"Dataset does not exist: {path}")
         with path.open() as f:
-            return json.load(f)
+            data = json.load(f)
 
-    def get_topics(self) -> list[str]:
-        return list(self.data.keys())
+        logger.info("Input data loaded")
+        return data
 
-    def get_sources(self, topic: str) -> list[str]:
-        return list(set([item["source"] for item in self.data[topic]]))
-
-    @staticmethod
-    def _matches_query(keyword: str, item: dict[str, Any]) -> bool:
-        return keyword in item["title"].lower() or keyword in item["content"].lower()
-
-    def _matches_source(self, sources: list[str] | None, item: dict[str, Any]) -> bool:
-        if not sources:
-            return True
-        return any(source == item["source"] for source in sources)
-
-    def search(
-        self,
-        keyword: str,
-        topic: str,
-        sources: list[str] | None,
-        max_results: int,
-    ) -> list[str]:
-
-        search_results = self._filter_results(
-            data=self.data[topic],
-            keyword=keyword.lower(),
-            sources=sources,
-            max_results=max_results,
-        )
-
+    def search(self, data: Path) -> list[str]:
+        data = self._read(data)
+        search_results = self._filter_results(data=data)
         return self._format_results(search_results)
 
     def _filter_results(
-        self,
-        data: list[dict[str, str]],
-        keyword: str,
-        sources: list[str] | None,
-        max_results: int,
+        self, data: dict[str, list[dict[str, Any]]]
     ) -> list[dict[str, str]]:
-        return list(
+        filtered_data = list(
             islice(
                 (
                     {
                         "title": item["title"],
                         "content": item["content"],
                     }
-                    for item in data
-                    if self._matches_query(item=item, keyword=keyword)
-                    and self._matches_source(item=item, sources=sources)
+                    for items in data.values()
+                    for item in items
+                    if self._matches_query(item=item)
+                    and self._matches_source(item=item)
                 ),
-                max_results,
+                self.max_results,
             )
         )
 
+        if len(filtered_data) == 0:
+            raise NoSearchResultsError(
+                f"No matching data for the keyword: {self.keyword} or sources: {self.sources}"
+            )
+
+        logger.info("Filtered the input data")
+        return filtered_data
+
+    def _matches_query(self, item: dict[str, Any]) -> bool:
+        return (
+            self.keyword in item["title"].lower()
+            or self.keyword in item["content"].lower()
+        )
+
+    def _matches_source(self, item: dict[str, Any]) -> bool:
+        if not self.sources:
+            return True
+        return any(source == item["source"] for source in self.sources)
+
     @staticmethod
     def _format_results(search_results: list[dict[str, str]]) -> list[str]:
-        return [
+        formatted_results = [
             f"{item['title'].strip()}: {item['content'].strip()}"
             for item in search_results
         ]
+
+        logger.info("Formatted the search results")
+        return formatted_results
