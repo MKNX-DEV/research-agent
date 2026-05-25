@@ -9,12 +9,13 @@ from textwrap import dedent
 
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 
 from research_tools.exceptions import DatasetNotAvailableError, NoSearchResultsError
 from research_tools.models import (
+    # AnalyzeOutput,
     AnalyzeParameters,
     SearchOutput,
     SearchParameters,
@@ -79,16 +80,21 @@ async def synthesize(input: SynthesizeParameters) -> SynthesizeOutput:
 
 
 @server.tool(description="Analyze synthesized content for insights")
-async def analyze(input: AnalyzeParameters):
-    return dedent(
-        f"""
-        You are an expert analyst.
-        Analyze the synthesized content with respect to the user query.
-
-        User Query: {input.user_query}
-        Content: {input.synthesize_output}
-        """
+async def analyze(input: AnalyzeParameters, ctx: Context) -> str:  # AnalyzeOutput:
+    result = await ctx.sample(
+        messages=input.user_query,
+        system_prompt=dedent(
+            f"""
+            You are an expert analyst.
+            Analyze the synthesized content for insights with respect to the user query.
+            The synthesized content: {input.synthesize_output}
+            """,
+        ),
+        # result_type=AnalyzeOutput,
     )
+
+    # return result.result
+    return result.text
 
 
 if __name__ == "__main__":

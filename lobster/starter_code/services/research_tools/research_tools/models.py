@@ -26,3 +26,9 @@ class AnalyzeParameters(BaseModel):
     user_query: str = Field(
         description="User original query to use to analyze the synthesized content against"
     )
+
+
+class AnalyzeOutput(BaseModel):
+    analyze_output: str = Field(
+        description="The output of the analyze between the user query and search results"
+    )
