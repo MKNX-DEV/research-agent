@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -24,20 +24,6 @@ class ResearchEndpointOutput(BaseModel):
     reason: str | None = Field(default=None, description=(""))
 
 
-class ToolRequest(BaseModel):
-    """Request to execute a tool via MCP."""
-
-    params: dict[str, Any]
-
-
-class ToolResponse(BaseModel):
-    """Response from tool execution."""
-
-    success: bool
-    result: dict[str, Any] | None = None
-    error: str | None = None
-
-
 class ResearchQuery(BaseModel):
     """Research query model."""
 
@@ -55,6 +41,6 @@ class ResearchQuery(BaseModel):
 
 @dataclass
 class AgentDeps:
-    mcp_tools: list
+    mcp_toolset_info: list
     sources: list[str]
     max_results: int

@@ -1,9 +1,9 @@
 class MCPConnectionError(Exception):
-    """Raised when the MCP server cannot be reached."""
+    pass
 
 
 class ModelConnectionError(Exception):
-    """Raised when the model cannot be reached."""
+    pass
 
 
 class ConfigurationError(Exception):

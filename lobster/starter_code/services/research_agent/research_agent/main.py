@@ -13,13 +13,15 @@ from fastapi import Depends, FastAPI  # , HTTPException
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models import Model
 
-from research_agent.config import AgentConfig
+from research_agent.agent import OutputComposer, build_agent
 from research_agent.dependencies import (
-    get_agent_config,
-    get_mcp_tool_info,
-    get_mcp_toolset,
+    get_mcp_client,
+    get_mcp_toolset_info,
     get_model,
+    get_settings,
 )
+from research_agent.lifespan import lifespan
+from research_agent.logging import configure_logger
 from research_agent.models import (
     AgentDeps,
     ResearchAgentOutput,
@@ -27,9 +29,9 @@ from research_agent.models import (
     ResearchQuery,
 )
 from research_agent.prompts import RESEARCH_PROMPT
-from research_agent.utils import OutputComposer, build_agent, configure_logger, lifespan
+from research_agent.settings import Settings
 
-logger = configure_logger()
+logger = configure_logger("research_agent")
 
 app = FastAPI(
     title="Research Agent",
@@ -49,41 +51,24 @@ async def root():
 async def research(
     request: ResearchQuery,
     model: Model = Depends(get_model),
-    agent_config: AgentConfig = Depends(get_agent_config),
-    mcp_toolset: MCPToolset = Depends(get_mcp_toolset),
-    mcp_tool_info: list = Depends(get_mcp_tool_info),
+    settings: Settings = Depends(get_settings),
+    mcp_client: MCPToolset = Depends(get_mcp_client),
+    mcp_toolset_info: list = Depends(get_mcp_toolset_info),
 ) -> ResearchEndpointOutput:
-    """
-    Main research endpoint - accepts natural language research requests.
-
-    TODO: Implement the agent logic:
-    1. Parse and understand the research request
-    2. Decide which tools to use and in what sequence
-    3. Call the tool service via MCP to gather information
-    4. Synthesize results into a comprehensive research report
-    5. Return structured response
-    """
-    # TODO: Implement agent reasoning and tool orchestration
-    # Example flow:
-    # 1. Use LLM to understand request and plan approach
-    # 2. Call tool service /mcp/run/search with appropriate parameters
-    # 3. Analyze results and decide if more searches are needed
-    # 4. Call tool service /mcp/run/synthesize to combine results
-    # 5. Generate final research report
 
     logger.info(f"Received user query: {request.query}")
 
     agent = build_agent(
         model=model,
         prompt=RESEARCH_PROMPT,
-        mcp_server=mcp_toolset,
-        config=agent_config,
+        toolset=mcp_client,
+        settings=settings,
         output_type=ResearchAgentOutput,
         deps_type=AgentDeps,
     )
 
     agent_deps = AgentDeps(
-        mcp_tools=mcp_tool_info,
+        mcp_toolset_info=mcp_toolset_info,
         sources=request.sources,
         max_results=request.max_results,
     )
