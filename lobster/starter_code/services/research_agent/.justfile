@@ -70,5 +70,5 @@ kube-down:
 kube-dashboard:
     minikube dashboard >/dev/null 2>&1 &
 
-main:
-    uv run uvicorn research_agent.main:app --host 0.0.0.0 --port 8000
+run log_level:
+    uv run uvicorn research_agent.main:app --host 0.0.0.0 --port 8000 --reload --log-level {{log_level}}

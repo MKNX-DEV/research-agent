@@ -8,9 +8,7 @@ to gather and synthesize information.
 
 # import httpx
 # from fastapi.responses import JSONResponse
-import logging
 
-# from typing import Any
 from fastapi import Depends, FastAPI  # , HTTPException
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models import Model
@@ -18,21 +16,20 @@ from pydantic_ai.models import Model
 from research_agent.config import AgentConfig
 from research_agent.dependencies import (
     get_agent_config,
-    get_mcp_server,
-    get_mcp_tool_names,
+    get_mcp_tool_info,
+    get_mcp_toolset,
     get_model,
 )
-from research_agent.interfaces import AgentDeps, ResearchOutput, UserQuery
+from research_agent.models import (
+    AgentDeps,
+    ResearchAgentOutput,
+    ResearchEndpointOutput,
+    ResearchQuery,
+)
 from research_agent.prompts import RESEARCH_PROMPT
-from research_agent.utils import build_agent, lifespan
+from research_agent.utils import OutputComposer, build_agent, configure_logger, lifespan
 
-# TODO: Import your common models
-# from common import AgentRequest, AgentResponse, MCPSpec, ToolRequest, ToolResponse, ...
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+logger = configure_logger()
 
 app = FastAPI(
     title="Research Agent",
@@ -50,12 +47,12 @@ async def root():
 
 @app.post("/research")
 async def research(
-    request: UserQuery,
+    request: ResearchQuery,
     model: Model = Depends(get_model),
     agent_config: AgentConfig = Depends(get_agent_config),
-    mcp_server: MCPToolset = Depends(get_mcp_server),
-    mcp_tool_names: AgentDeps = Depends(get_mcp_tool_names),
-) -> ResearchOutput:
+    mcp_toolset: MCPToolset = Depends(get_mcp_toolset),
+    mcp_tool_info: list = Depends(get_mcp_tool_info),
+) -> ResearchEndpointOutput:
     """
     Main research endpoint - accepts natural language research requests.
 
@@ -79,35 +76,22 @@ async def research(
     agent = build_agent(
         model=model,
         prompt=RESEARCH_PROMPT,
-        mcp_server=mcp_server,
+        mcp_server=mcp_toolset,
         config=agent_config,
-        output_type=ResearchOutput,
+        output_type=ResearchAgentOutput,
         deps_type=AgentDeps,
     )
 
-    async with agent:
-        response = await agent.run(request.query, deps=mcp_tool_names)
+    agent_deps = AgentDeps(
+        mcp_tools=mcp_tool_info,
+        sources=request.sources,
+        max_results=request.max_results,
+    )
 
-    return response.output
+    try:
+        async with agent:
+            response = await agent.run(request.query, deps=agent_deps)
+        return OutputComposer.build_output(data=response.output.research_output)
 
-
-# async def call_tool_service(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
-#     """
-#     Helper function to call the tool service via MCP.
-
-#     TODO: Implement HTTP client to call tool service endpoints.
-#     """
-#     # TODO: Make HTTP request to TOOL_SERVICE_URL/mcp/run/{tool_name}
-#     # Handle errors and timeouts appropriately
-#     pass
-
-
-# TODO: Add any additional helper functions for:
-# - LLM interaction and prompting
-# - Result processing and analysis
-# - Tool orchestration logic
-
-
-# if __name__ == "__main__":
-# import uvicorn
-# uvicorn.run(app, host="0.0.0.0", port=8000)
+    except Exception as e:
+        return OutputComposer.handle_search_error(e)
