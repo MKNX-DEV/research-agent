@@ -5,23 +5,31 @@ This is a template - feel free to completely rewrite or restructure as needed.
 This service exposes tools via MCP protocol for agents to use.
 """
 
-import logging
 from textwrap import dedent
 
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
-from pydantic import Field
 
 from research_tools.exceptions import DatasetNotAvailableError, NoSearchResultsError
-from research_tools.models import SearchResponse
-from research_tools.utils import LoggingMiddleware, SearchEngine, load_config
+from research_tools.models import (
+    # AnalyzeOutput,
+    AnalyzeParameters,
+    SearchOutput,
+    SearchParameters,
+    SynthesizeOutput,
+    SynthesizeParameters,
+)
+from research_tools.utils import (
+    LoggingMiddleware,
+    SearchEngine,
+    configure_logger,
+    load_config,
+)
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+logger = configure_logger("research_tools")
 config = load_config()
 server = FastMCP(name=config.server_name, on_duplicate=config.on_duplicate)
 
@@ -37,113 +45,56 @@ async def health_check(request: Request):
     return JSONResponse({"status": "healthy"})
 
 
-@server.tool(description="Discover topics available in the dataset")
-async def discover_topics() -> list[str]:
-    try:
-        engine = SearchEngine(data_path=config.data)
-        topics = engine.get_topics()
-        logger.info(f"Discovered topics: {topics}")
-        return topics
-    except DatasetNotAvailableError:
-        logger.error("Dataset unavailable")
-        raise ToolError("Dataset is currently unavailable.")
-    except Exception:
-        logger.error("Unexpected error in discover_topics")
-        raise ToolError("Internal server error.")
-
-
-@server.tool(
-    description="Discover available sources for a topic when the user specifies a source"
-)
-async def discover_sources(
-    topic: str = Field(description="Topic for which to retrieve available sources"),
-) -> list[str]:
-    try:
-        engine = SearchEngine(data_path=config.data)
-        sources = engine.get_sources(topic=topic)
-        logger.info(f"Available sources for topic {topic}. Sources: {sources}.")
-        return sources
-    except DatasetNotAvailableError:
-        logger.error("Dataset unavailable")
-        raise ToolError("Dataset is currently unavailable.")
-    except Exception:
-        logger.error("Unexpected error in discover_topics")
-        raise ToolError("Internal server error.")
-
-
-@server.tool(description="Extract the primary search keyword from the user query")
-async def extract_search_keyword(
-    query: str = Field(
-        description="User query from which to extract the primary search keyword"
-    ),
-) -> str:
-    return dedent(
-        f"""
-        Extract the primary search keyword from the user query.
-        User Query: {query}
-        """
-    )
-
-
 @server.tool(description="Search the dataset for user-requested information")
-async def search(
-    topic: str = Field(description="Knowledge base topic to search within"),
-    keyword: str = Field(description="Primary search keyword"),
-    sources: list[str] | None = Field(description="Sources to search within"),
-    max_results: int = Field(description="Maximum number of results to return"),
-) -> SearchResponse:
+async def search(input: SearchParameters) -> SearchOutput:
 
-    engine = SearchEngine(data_path=config.data)
-    results = engine.search(
-        keyword=keyword, topic=topic, sources=sources, max_results=max_results
-    )
+    try:
+        engine = SearchEngine(
+            keyword=input.keyword, sources=input.sources, max_results=input.max_results
+        )
 
-    if not results:
-        logger.info("Search returned no results")
-        search_response = SearchResponse(
-            status="no_results",
-            results=[],
-            message=("No matching documents were found for the provided query."),
-        )
-        raise NoSearchResultsError(
-            "No matching documents were found for the provided query."
-        )
-    else:
-        logger.info(f"Found research data: {results}")
-        search_response = SearchResponse(
-            status="success",
-            results=results,
-            message=f"Found {len(results)} matching result(s).",
-        )
-    return search_response
+        results = engine.search(data=config.data)
+        logger.info(f"Found research data: {results[:2]}")
+        return SearchOutput(search_output=results)
+
+    except DatasetNotAvailableError:
+        msg = "Input dataset not found"
+        logger.error(msg)
+        raise ToolError(msg)
+
+    except NoSearchResultsError:
+        msg = "No matching data for the user input"
+        logger.error(msg)
+        raise ToolError(msg)
 
 
 @server.tool(description="Combine multiple search results into a coherent summary")
-async def synthesize(
-    search_results: list[str] = Field(description="Search results to synthesize"),
-) -> str:
-    """Returns: Synthesized text with inline citations."""
+async def synthesize(input: SynthesizeParameters) -> SynthesizeOutput:
+
     summary = " ".join(
-        f"{text} [{idx}]" for idx, text in enumerate(search_results, start=1)
+        f"{text} [{idx}]" for idx, text in enumerate(input.search_output, start=1)
     )
-    return summary
+
+    logger.info("Synthesis complete")
+    return SynthesizeOutput(synthesize_output=summary)
 
 
 @server.tool(description="Analyze synthesized content for insights")
-async def analyze(
-    synthesized_content: str = Field(description="Synthesized text to analyze"),
-    user_query: str = Field(description="User query defining the analysis focus"),
-) -> str:
-    """Returns: Analysis results based on the user query."""
-    return dedent(
-        f"""
-        You are an expert analyst.
-        Analyze the synthesized content with respect to the user query.
-
-        User Query: {user_query}
-        Content: {synthesized_content}
-        """
+async def analyze(input: AnalyzeParameters, ctx: Context) -> str:  # AnalyzeOutput:
+    result = await ctx.sample(
+        messages=input.user_query,
+        system_prompt=dedent(
+            f"""
+            You are an expert analyst.
+            Analyze the synthesized content for insights with respect to the user query.
+            The synthesized content: {input.synthesize_output}
+            """,
+        ),
+        # result_type=AnalyzeOutput,
     )
+
+    # return result.result
+    return result.text
 
 
 if __name__ == "__main__":

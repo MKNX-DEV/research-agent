@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI  # , HTTPException
 from fastmcp import Client
 from fastmcp.client.logging import LogMessage
+from fastmcp.client.sampling import RequestContext, SamplingMessage, SamplingParams
 from fastmcp.client.transports import StreamableHttpTransport
 from pydantic import ValidationError
 from pydantic_ai import Agent, RunContext
@@ -70,11 +71,14 @@ def create_model_client(config: AgentConfig) -> Model:
         ) from e
 
 
-def create_mcp_toolset(config: AgentConfig, log_handler) -> MCPToolset:
+def create_mcp_toolset(
+    config: AgentConfig, log_handler, sampling_model: Model
+) -> MCPToolset:
     try:
         client = Client(
             StreamableHttpTransport(config.mcp_url),
             log_handler=log_handler,
+            sampling_handler=SamplingHandler(sampling_model),
         )
         toolset = MCPToolset(client)
         logger.info(f"Initialized MCP client for MCP server at {config.mcp_url}")
@@ -91,7 +95,7 @@ async def verify_mcp_connection(toolset: MCPToolset) -> None:
     try:
         async with toolset:
             await toolset.client.ping()
-        logger.info("Connected to MCP server")
+        logger.info("Verified the MCP server connection")
 
     except Exception as e:
         logger.error("Failed to connect to MCP server")
@@ -126,7 +130,9 @@ async def lifespan(app: FastAPI):
         app.state.model = create_model_client(app.state.agent_config)
 
         app.state.mcp_toolset = create_mcp_toolset(
-            config=app.state.agent_config, log_handler=log_handler
+            config=app.state.agent_config,
+            log_handler=log_handler,
+            sampling_model=app.state.model,
         )
 
         await verify_mcp_connection(app.state.mcp_toolset)
@@ -135,7 +141,7 @@ async def lifespan(app: FastAPI):
         yield
 
     except Exception:
-        logger.error("Application startup failed")
+        logger.exception("Application startup failed")
 
 
 def build_agent(
@@ -205,3 +211,26 @@ class OutputComposer:
         error_msg = str(root_cause)
         logger.error(f"Error in MCP server: {error_msg}")
         return cls.build_unknown_error_output(error_msg)
+
+
+class SamplingHandler:
+    def __init__(self, model: Model):
+        self._model = model
+
+    async def __call__(
+        self,
+        messages: list[SamplingMessage],
+        params: SamplingParams,
+        context: RequestContext,
+    ) -> str:
+        system_prompt = params.systemPrompt or "You are a helpful assistant."
+        agent = Agent(self._model, system_prompt=system_prompt)
+
+        user_query = "\n".join(
+            m.content.text for m in messages if hasattr(m.content, "text")
+        )
+
+        result = await agent.run(user_query)
+        logger.info(f"result: {result}")
+        logger.info(f"result output: {result.output}")
+        return result.output

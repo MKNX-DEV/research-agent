@@ -8,7 +8,7 @@ data_path = ROOT.parent / "data/mock_research_data.json"
 
 
 class LogLevelConfig(BaseSettings):
-    log_level: str
+    log_level: Literal["DEBUG", "INFO"] = "INFO"
 
 
 class MCPConfig(BaseSettings):

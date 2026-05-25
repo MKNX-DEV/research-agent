@@ -1,5 +1,5 @@
 class NoSearchResultsError(Exception):
-    """Raised when the search returns no results."""
+    pass
 
 
 class ConfigurationError(Exception):
