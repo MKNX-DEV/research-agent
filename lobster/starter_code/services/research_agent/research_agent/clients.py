@@ -28,7 +28,9 @@ def create_model_client(settings: Settings) -> Model[Any]:
     try:
         model = OpenAIChatModel(
             model_name=settings.LLM_NAME,
-            provider=GitHubProvider(api_key=settings.API_KEY.get_secret_value()),
+            provider=GitHubProvider(
+                api_key=settings.GITHUB_MODELS_API_KEY.get_secret_value()
+            ),
         )
 
         logger.info(f"Initialized model client for the {settings.LLM_NAME} model")

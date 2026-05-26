@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from shared_libs.utils import load_settings
 
 from research_agent.clients import (
     create_mcp_client,
@@ -10,7 +11,7 @@ from research_agent.clients import (
     verify_mcp_connection,
 )
 from research_agent.logging import log_handler
-from research_agent.settings import load_settings
+from research_agent.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        app.state.settings = load_settings()
+        app.state.settings = load_settings(Settings)
         app.state.model = create_model_client(app.state.settings)
 
         app.state.mcp_client = create_mcp_client(

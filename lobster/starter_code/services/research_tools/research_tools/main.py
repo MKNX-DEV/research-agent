@@ -12,11 +12,11 @@ from fastapi.responses import JSONResponse
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
+from shared_libs.utils import configure_logger, load_settings
 
 from research_tools.exceptions import DatasetNotAvailableError
-from research_tools.logging import LoggingMiddleware, configure_logger
+from research_tools.logging import LoggingMiddleware
 from research_tools.models import (
-    # AnalyzeOutput,
     AnalyzeParameters,
     SearchOutput,
     SearchParameters,
@@ -24,10 +24,10 @@ from research_tools.models import (
     SynthesizeParameters,
 )
 from research_tools.search import SearchEngine
-from research_tools.settings import load_settings
+from research_tools.settings import MCPSettings
 
-logger = configure_logger("research_tools")
-settings = load_settings()
+settings = load_settings(MCPSettings)
+logger = configure_logger(title="research_tools", log_level=settings.LOG_LEVEL)
 server = FastMCP(name=settings.SERVER_NAME, on_duplicate=settings.ON_DUPLICATE)
 
 server.add_middleware(
@@ -72,9 +72,7 @@ async def synthesize(input: SynthesizeParameters) -> SynthesizeOutput:
 
 
 @server.tool(description="Analyze synthesized content for insights")
-async def analyze(
-    input: AnalyzeParameters, ctx: Context
-) -> str | None:  # AnalyzeOutput:
+async def analyze(input: AnalyzeParameters, ctx: Context) -> str | None:
     result = await ctx.sample(
         messages=input.user_query,
         system_prompt=dedent(
@@ -84,10 +82,8 @@ async def analyze(
             The synthesized content: {input.synthesize_output}
             """,
         ),
-        # result_type=AnalyzeOutput,
     )
 
-    # return result.result
     return result.text
 
 

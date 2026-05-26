@@ -1,7 +1,3 @@
-class ConfigurationError(Exception):
-    pass
-
-
 class ModelClientError(Exception):
     pass
 

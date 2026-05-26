@@ -3,4 +3,7 @@
   "reportUnusedFunction": false,
   "venvPath": ".",
   "venv": ".venv",
+  "extraPaths": [
+    "../shared_libs"
+  ]
 }

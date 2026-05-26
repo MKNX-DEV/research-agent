@@ -7,11 +7,15 @@ requires-python = ">=3.14"
 dependencies = [
     "fastapi==0.136.0",
     "pydantic-ai==1.97.0",
+    "pydantic==2.13.4",
+    "pydantic-settings==2.14.0",
+    "fastmcp==3.3.1",
+    "mcp==1.27.0",
+    "shared-libs==0.1.0",
 ]
 
 [tool.uv]
 exclude-newer = "3 days"
-
 
 [dependency-groups]
 dev = [
@@ -26,3 +30,6 @@ quote-style = "double"
 
 [tool.ruff.lint]
 extend-select = ["I"]
+
+[tool.uv.sources]
+shared_libs = { path = "../shared_libs", editable = true }

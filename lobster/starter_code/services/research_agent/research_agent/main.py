@@ -13,6 +13,7 @@ from fastapi import Depends, FastAPI  # , HTTPException
 from mcp.types import Tool
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models import Model
+from shared_libs.utils import configure_logger, load_settings
 
 from research_agent.agent import OutputComposer, ResearchAgent
 from research_agent.dependencies import (
@@ -22,7 +23,6 @@ from research_agent.dependencies import (
     get_settings,
 )
 from research_agent.lifespan import lifespan
-from research_agent.logging import configure_logger
 from research_agent.models import (
     AgentDeps,
     ResearchAgentOutput,
@@ -32,7 +32,8 @@ from research_agent.models import (
 from research_agent.prompts import RESEARCH_PROMPT
 from research_agent.settings import Settings
 
-logger = configure_logger("research_agent")
+settings = load_settings(Settings)
+logger = configure_logger(title="research_agent", log_level=settings.LOG_LEVEL)
 
 app = FastAPI(
     title="Research Agent",
