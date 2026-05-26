@@ -3,22 +3,6 @@ PY_FLAGS := "PYTHONDONTWRITEBYTECODE=1"
 SRC      := "research_tools"
 TESTS    := "tests"
 
-# Prek: Wire hooks into git automatically
-prek-init:
-    prek install
-
-# Prek: Run hooks on demand
-prek:
-    prek run
-
-# Prek: Run hooks on demand against all files
-prek-all:
-    prek run --all-files
-
-# Install / update dependencies for a given app
-init:
-    uv sync
-
 # Clean Python cache files
 clean:
     find . -type f -name "*.py[co]" -delete
@@ -51,24 +35,6 @@ lint-fix:
 type-check:
     {{PY_FLAGS}} uv run pyright
 
-# Lint, type check, format
-ci:
-    just lint-fix
-    just type-check
-    just format
-
-# Spin up a minikube cluster
-kube-up:
-    minikube start --memory=max --cpus=max
-    eval $(minikube docker-env)
-
-# Shutdown minikube
-kube-down:
-    minikube delete --all --purge
-
-# Spin up a minikube dashboard
-kube-dashboard:
-    minikube dashboard >/dev/null 2>&1 &
-
+# Run app
 run:
     uv run python -m research_tools.main
