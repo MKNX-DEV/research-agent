@@ -14,6 +14,7 @@ from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 
 from research_tools.exceptions import DatasetNotAvailableError, NoSearchResultsError
+from research_tools.logging import LoggingMiddleware, configure_logger
 from research_tools.models import (
     # AnalyzeOutput,
     AnalyzeParameters,
@@ -22,16 +23,12 @@ from research_tools.models import (
     SynthesizeOutput,
     SynthesizeParameters,
 )
-from research_tools.utils import (
-    LoggingMiddleware,
-    SearchEngine,
-    configure_logger,
-    load_config,
-)
+from research_tools.search import SearchEngine
+from research_tools.settings import load_settings
 
 logger = configure_logger("research_tools")
-config = load_config()
-server = FastMCP(name=config.server_name, on_duplicate=config.on_duplicate)
+settings = load_settings()
+server = FastMCP(name=settings.SERVER_NAME, on_duplicate=settings.ON_DUPLICATE)
 
 server.add_middleware(
     ErrorHandlingMiddleware(include_traceback=True, transform_errors=True)
@@ -53,7 +50,7 @@ async def search(input: SearchParameters) -> SearchOutput:
             keyword=input.keyword, sources=input.sources, max_results=input.max_results
         )
 
-        results = engine.search(data=config.data)
+        results = engine.search(data=settings.DATA)
         logger.info(f"Found research data: {results[:2]}")
         return SearchOutput(search_output=results)
 
@@ -99,7 +96,7 @@ async def analyze(input: AnalyzeParameters, ctx: Context) -> str:  # AnalyzeOutp
 
 if __name__ == "__main__":
     server.run(
-        transport=config.transport,
-        host=config.host,
-        port=config.port,
+        transport=settings.TRANSPORT,
+        host=settings.HOST,
+        port=settings.PORT,
     )
