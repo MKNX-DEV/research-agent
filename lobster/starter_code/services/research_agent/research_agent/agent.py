@@ -19,7 +19,7 @@ class OutputComposer:
     def build_empty_output() -> ResearchEndpointOutput:
         return ResearchEndpointOutput(
             research_output=None,
-            status="no_results",
+            status="no_result",
             reason="No results matching the user query",
         )
 
@@ -49,7 +49,7 @@ class ResearchAgent(Generic[DepsT, OutputT]):
         toolset: MCPToolset[DepsT],
         deps_type: type[DepsT],
         output_type: type[OutputT],
-        output_composer: OutputComposer,
+        output_composer: type[OutputComposer],
     ):
         self.settings = settings
         self.model = model
@@ -87,9 +87,13 @@ class ResearchAgent(Generic[DepsT, OutputT]):
         try:
             async with agent:
                 response = await agent.run(query, deps=deps)
-            return self.output_composer.build_success_output(
-                data=response.output.research_output
-            )
+
+            research_output = response.output.research_output
+
+            if not research_output:
+                return self.output_composer.build_empty_output()
+
+            return self.output_composer.build_success_output(research_output)
 
         except ModelHTTPError as e:
             return self.output_composer.build_error_output(

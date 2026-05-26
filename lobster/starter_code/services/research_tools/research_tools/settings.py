@@ -35,5 +35,6 @@ def load_settings() -> MCPSettings:
 
     except ValidationError as e:
         invalid_fields = [".".join(map(str, err["loc"])) for err in e.errors()]
-        logger.error(f"Invalid configuration: {invalid_fields}")
-        raise ConfigurationError("Missing or invalid environment variables") from e
+        msg = f"Invalid configuration: {invalid_fields}"
+        logger.exception(msg)
+        raise ConfigurationError(msg) from e

@@ -13,7 +13,7 @@ from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 
-from research_tools.exceptions import DatasetNotAvailableError, NoSearchResultsError
+from research_tools.exceptions import DatasetNotAvailableError
 from research_tools.logging import LoggingMiddleware, configure_logger
 from research_tools.models import (
     # AnalyzeOutput,
@@ -51,17 +51,12 @@ async def search(input: SearchParameters) -> SearchOutput:
         )
 
         results = engine.search(settings.DATA)
-        logger.info(f"Found research data: {results[:2]}")
-        return SearchOutput(search_output=results)
+        found_results = bool(results)
+        return SearchOutput(search_output=results, found_results=found_results)
 
     except DatasetNotAvailableError:
         msg = "Input dataset not found"
-        logger.error(msg)
-        raise ToolError(msg)
-
-    except NoSearchResultsError:
-        msg = "No matching data for the user input"
-        logger.error(msg)
+        logger.exception(msg)
         raise ToolError(msg)
 
 

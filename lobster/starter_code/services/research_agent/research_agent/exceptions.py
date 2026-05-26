@@ -1,10 +1,14 @@
-class MCPConnectionError(Exception):
-    pass
-
-
-class ModelConnectionError(Exception):
-    pass
-
-
 class ConfigurationError(Exception):
+    pass
+
+
+class ModelClientError(Exception):
+    pass
+
+
+class MCPClientError(Exception):
+    pass
+
+
+class MCPServerConnectionError(Exception):
     pass

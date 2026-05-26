@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class SearchParameters(BaseModel):
@@ -11,6 +11,19 @@ class SearchParameters(BaseModel):
 
 class SearchOutput(BaseModel):
     search_output: list[str] | None = Field(description="Search results returned")
+    found_results: bool = Field(
+        description="A boolean flag indicating whether the tool call found matching data"
+    )
+
+    @model_validator(mode="after")
+    def validate_consistency(self):
+        if not self.found_results and self.search_output is not None:
+            raise ValueError("search_output must be None when found_results=False")
+
+        if self.found_results and not self.search_output:
+            raise ValueError("search_output required when found_results=True")
+
+        return self
 
 
 class SynthesizeParameters(BaseModel):
