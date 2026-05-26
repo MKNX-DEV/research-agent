@@ -1,4 +1,5 @@
 import logging
+from typing import Any, TypeVar
 
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.mcp import MCPToolset
@@ -8,37 +9,7 @@ from research_agent.models import AgentDeps, ResearchEndpointOutput
 from research_agent.settings import Settings
 
 logger = logging.getLogger(__name__)
-
-
-def build_agent(
-    model: Model,
-    prompt: str,
-    toolset: MCPToolset,
-    settings: Settings,
-    output_type,
-    deps_type,
-) -> Agent:
-    agent = Agent(
-        model=model,
-        system_prompt=prompt,
-        toolsets=[toolset],
-        retries=settings.RETRIES,
-        output_type=output_type,
-        deps_type=deps_type,
-    )
-
-    @agent.system_prompt
-    def _supply_toolset_info(ctx: RunContext[AgentDeps]) -> str:
-        return f"The mcp server tools are {ctx.deps.mcp_toolset_info}."
-
-    @agent.system_prompt
-    def _add_context(ctx: RunContext[AgentDeps]) -> str:
-        return f"""
-        Preferred Sources: {ctx.deps.sources}
-        Maximum Results: {ctx.deps.max_results}
-        """
-
-    return agent
+DepsT = TypeVar("DepsT")
 
 
 class OutputComposer:
@@ -68,3 +39,58 @@ class OutputComposer:
         error_msg = str(root_cause)
         logger.error(f"Error in MCP server: {error_msg}")
         return cls.build_unknown_error_output(error_msg)
+
+
+class ResearchAgent:
+    def __init__(
+        self,
+        settings: Settings,
+        model: Model,
+        instructions: str,
+        toolset: MCPToolset,
+        deps_type: type[DepsT],
+        output_type: Any,
+        output_composer: OutputComposer,
+    ):
+        self.settings = settings
+        self.model = model
+        self.instructions = instructions
+        self.toolset = toolset
+        self.deps_type = deps_type
+        self.output_type = output_type
+        self.output_compser = output_composer
+
+    def _build_agent(self) -> Agent:
+        agent = Agent(
+            model=self.model,
+            instructions=self.instructions,
+            toolsets=[self.toolset],
+            retries=self.settings.RETRIES,
+            output_type=self.output_type,
+            deps_type=self.deps_type,
+        )
+
+        @agent.system_prompt
+        def _supply_toolset_info(ctx: RunContext[AgentDeps]) -> str:
+            return f"The mcp server tools are {ctx.deps.mcp_toolset_info}."
+
+        @agent.system_prompt
+        def _add_context(ctx: RunContext[AgentDeps]) -> str:
+            return f"""
+            Preferred Sources: {ctx.deps.sources}
+            Maximum Results: {ctx.deps.max_results}
+            """
+
+        return agent
+
+    async def run(self, query: str, deps: AgentDeps) -> ResearchEndpointOutput:
+        agent = self._build_agent()
+        try:
+            async with agent:
+                response = await agent.run(query, deps=deps)
+            return self.output_compser.build_output(
+                data=response.output.research_output
+            )
+
+        except Exception as e:
+            return self.output_compser.handle_search_error(e)

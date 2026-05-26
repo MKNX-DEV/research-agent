@@ -13,7 +13,7 @@ from fastapi import Depends, FastAPI  # , HTTPException
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models import Model
 
-from research_agent.agent import OutputComposer, build_agent
+from research_agent.agent import OutputComposer, ResearchAgent
 from research_agent.dependencies import (
     get_mcp_client,
     get_mcp_toolset_info,
@@ -58,13 +58,14 @@ async def research(
 
     logger.info(f"Received user query: {request.query}")
 
-    agent = build_agent(
+    agent = ResearchAgent(
         model=model,
-        prompt=RESEARCH_PROMPT,
+        instructions=RESEARCH_PROMPT,
         toolset=mcp_client,
         settings=settings,
         output_type=ResearchAgentOutput,
         deps_type=AgentDeps,
+        output_composer=OutputComposer(),
     )
 
     agent_deps = AgentDeps(
@@ -73,10 +74,4 @@ async def research(
         max_results=request.max_results,
     )
 
-    try:
-        async with agent:
-            response = await agent.run(request.query, deps=agent_deps)
-        return OutputComposer.build_output(data=response.output.research_output)
-
-    except Exception as e:
-        return OutputComposer.handle_search_error(e)
+    return await agent.run(request.query, deps=agent_deps)
