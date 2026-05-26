@@ -1,9 +1,12 @@
 import logging
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from fastmcp import Client
 from fastmcp.client.logging import LogMessage
 from fastmcp.client.sampling import RequestContext, SamplingMessage, SamplingParams
 from fastmcp.client.transports import StreamableHttpTransport
+from mcp.types import TextContent, Tool
 from pydantic_ai import Agent
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models import Model
@@ -14,6 +17,7 @@ from research_agent.exceptions import (
     MCPConnectionError,
     ModelConnectionError,
 )
+from research_agent.models import AgentDeps
 from research_agent.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -38,15 +42,17 @@ def create_model_client(settings: Settings) -> Model:
 
 
 def create_mcp_client(
-    settings: Settings, log_handler, sampling_model: Model
-) -> MCPToolset:
+    settings: Settings,
+    log_handler: Callable[[LogMessage], Awaitable[None]],
+    sampling_model: Model,
+) -> MCPToolset[AgentDeps]:
     try:
         client = Client(
             StreamableHttpTransport(settings.MCP_SERVER_URL),
             log_handler=log_handler,
             sampling_handler=SamplingHandler(sampling_model),
         )
-        toolset = MCPToolset(client)
+        toolset = MCPToolset[AgentDeps](client)
         logger.info(
             f"Initialized MCP client for MCP server at {settings.MCP_SERVER_URL}"
         )
@@ -59,7 +65,7 @@ def create_mcp_client(
         ) from e
 
 
-async def verify_mcp_connection(toolset: MCPToolset) -> None:
+async def verify_mcp_connection(toolset: MCPToolset[AgentDeps]) -> None:
     try:
         async with toolset:
             await toolset.client.ping()
@@ -70,7 +76,7 @@ async def verify_mcp_connection(toolset: MCPToolset) -> None:
         raise MCPConnectionError("Could not connect to MCP server") from e
 
 
-async def query_mcp_toolset_info(client: MCPToolset) -> list:
+async def query_mcp_toolset_info(client: MCPToolset[AgentDeps]) -> list[Tool]:
     try:
         async with client:
             mcp_tool_info = await client.list_tools()
@@ -100,13 +106,13 @@ class SamplingHandler:
         self,
         messages: list[SamplingMessage],
         params: SamplingParams,
-        context: RequestContext,
+        context: RequestContext[Any, Any],
     ) -> str:
         system_prompt = params.systemPrompt or "You are a helpful assistant."
         agent = Agent(self._model, system_prompt=system_prompt)
 
         user_query = "\n".join(
-            m.content.text for m in messages if hasattr(m.content, "text")
+            m.content.text for m in messages if isinstance(m.content, TextContent)
         )
 
         result = await agent.run(user_query)

@@ -1,34 +1,29 @@
 import logging
-from typing import Any, TypeVar
+from typing import Generic, TypeVar
 
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models import Model
 
-from research_agent.models import AgentDeps, ResearchEndpointOutput
+from research_agent.models import AgentDeps, ResearchAgentOutput, ResearchEndpointOutput
 from research_agent.settings import Settings
 
 logger = logging.getLogger(__name__)
-DepsT = TypeVar("DepsT")
+DepsT = TypeVar("DepsT", bound=AgentDeps)
+OutputT = TypeVar("OutputT", bound=ResearchAgentOutput)
 
 
 class OutputComposer:
     @staticmethod
     def build_unknown_error_output(error_msg: str) -> ResearchEndpointOutput:
         return ResearchEndpointOutput(
-            research_output=None,
-            status="error",
-            reason=error_msg,
-            message="Internal processing error.",
+            research_output=None, status="error", reason=error_msg
         )
 
     @staticmethod
-    def build_output(data) -> ResearchEndpointOutput:
+    def build_output(data: str) -> ResearchEndpointOutput:
         return ResearchEndpointOutput(
-            research_output=data,
-            status="success",
-            reason="",
-            message="Research completed",
+            research_output=data, status="success", reason=None
         )
 
     @classmethod
@@ -41,15 +36,15 @@ class OutputComposer:
         return cls.build_unknown_error_output(error_msg)
 
 
-class ResearchAgent:
+class ResearchAgent(Generic[DepsT, OutputT]):
     def __init__(
         self,
         settings: Settings,
         model: Model,
         instructions: str,
-        toolset: MCPToolset,
+        toolset: MCPToolset[DepsT],
         deps_type: type[DepsT],
-        output_type: Any,
+        output_type: type[OutputT],
         output_composer: OutputComposer,
     ):
         self.settings = settings
@@ -60,8 +55,8 @@ class ResearchAgent:
         self.output_type = output_type
         self.output_compser = output_composer
 
-    def _build_agent(self) -> Agent:
-        agent = Agent(
+    def _build_agent(self) -> Agent[DepsT, OutputT]:
+        agent = Agent[DepsT, OutputT](
             model=self.model,
             instructions=self.instructions,
             toolsets=[self.toolset],
@@ -71,11 +66,11 @@ class ResearchAgent:
         )
 
         @agent.system_prompt
-        def _supply_toolset_info(ctx: RunContext[AgentDeps]) -> str:
+        def _supply_toolset_info(ctx: RunContext[DepsT]) -> str:
             return f"The mcp server tools are {ctx.deps.mcp_toolset_info}."
 
         @agent.system_prompt
-        def _add_context(ctx: RunContext[AgentDeps]) -> str:
+        def _add_context(ctx: RunContext[DepsT]) -> str:
             return f"""
             Preferred Sources: {ctx.deps.sources}
             Maximum Results: {ctx.deps.max_results}
@@ -83,7 +78,7 @@ class ResearchAgent:
 
         return agent
 
-    async def run(self, query: str, deps: AgentDeps) -> ResearchEndpointOutput:
+    async def run(self, query: str, deps: DepsT) -> ResearchEndpointOutput:
         agent = self._build_agent()
         try:
             async with agent:

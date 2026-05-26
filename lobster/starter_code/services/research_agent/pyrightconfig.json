@@ -1,0 +1,6 @@
+{
+  "typeCheckingMode": "strict",
+  "reportUnusedFunction": false,
+  "venvPath": ".",
+  "venv": ".venv",
+}

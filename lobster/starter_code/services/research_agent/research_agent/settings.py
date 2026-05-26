@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     LLM_NAME: str = "openai/gpt-4.1-mini"
     API_KEY: SecretStr
     RETRIES: int = 3
-    MCP_SERVER_URL: HttpUrl = "http://localhost:8001/mcp"
+    MCP_SERVER_URL: HttpUrl = HttpUrl("http://localhost:8001/mcp")
 
 
 class LoggingSettings(BaseSettings):
@@ -28,7 +28,7 @@ class LoggingSettings(BaseSettings):
 
 def load_settings() -> Settings:
     try:
-        settings = Settings()
+        settings = Settings()  # pyright: ignore[reportCallIssue]
         logger.info("Application configuration loaded")
         return settings
 
