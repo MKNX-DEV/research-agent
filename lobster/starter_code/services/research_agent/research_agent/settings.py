@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(case_sensitive=True, env_file=ENV_FILE)
-    LLM_NAME: str = "openai/gpt-4.1-mini"
+    LLM_NAME: str
     API_KEY: SecretStr
     RETRIES: int = 3
     MCP_SERVER_URL: HttpUrl = HttpUrl("http://localhost:8001/mcp")

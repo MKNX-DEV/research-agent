@@ -1,5 +1,6 @@
 import logging
 
+from fastmcp.client.logging import LogMessage
 from uvicorn.logging import DefaultFormatter
 
 from research_agent.settings import LoggingSettings
@@ -20,3 +21,12 @@ def configure_logger(title: str) -> logging.Logger:
     logger.setLevel(level=getattr(logging, LoggingSettings().LOG_LEVEL))
     logger.addHandler(handler)
     return logger
+
+
+async def log_handler(message: LogMessage) -> None:
+    """Receive structured logs emitted by the MCP server."""
+    msg = message.data.get("msg")
+    extra = message.data.get("extra")
+    LOGGING_LEVEL_MAP = logging.getLevelNamesMapping()
+    level = LOGGING_LEVEL_MAP.get(message.level.upper(), logging.INFO)
+    logger.log(level, msg, extra=extra)

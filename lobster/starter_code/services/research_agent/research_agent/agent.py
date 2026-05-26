@@ -2,6 +2,7 @@ import logging
 from typing import Generic, TypeVar
 
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models import Model
 
@@ -15,25 +16,28 @@ OutputT = TypeVar("OutputT", bound=ResearchAgentOutput)
 
 class OutputComposer:
     @staticmethod
-    def build_unknown_error_output(error_msg: str) -> ResearchEndpointOutput:
+    def build_empty_output() -> ResearchEndpointOutput:
         return ResearchEndpointOutput(
-            research_output=None, status="error", reason=error_msg
+            research_output=None,
+            status="no_results",
+            reason="No results matching the user query",
         )
 
     @staticmethod
-    def build_output(data: str) -> ResearchEndpointOutput:
+    def build_success_output(data: str) -> ResearchEndpointOutput:
         return ResearchEndpointOutput(
             research_output=data, status="success", reason=None
         )
 
-    @classmethod
-    def handle_search_error(cls, e: Exception | RuntimeError) -> ResearchEndpointOutput:
-        error_msg = str(e)
-        logger.error(f"Agent execution error: {error_msg}")
-        root_cause = e.__cause__ if e.__cause__ else e
-        error_msg = str(root_cause)
-        logger.error(f"Error in MCP server: {error_msg}")
-        return cls.build_unknown_error_output(error_msg)
+    @staticmethod
+    def build_error_output(
+        e: Exception, msg: str | None = None
+    ) -> ResearchEndpointOutput:
+        msg = msg or "Search execution failed."
+        logger.exception(msg, exc_info=e)
+        return ResearchEndpointOutput(
+            research_output=None, status="error", reason="Internal processing error"
+        )
 
 
 class ResearchAgent(Generic[DepsT, OutputT]):
@@ -53,7 +57,7 @@ class ResearchAgent(Generic[DepsT, OutputT]):
         self.toolset = toolset
         self.deps_type = deps_type
         self.output_type = output_type
-        self.output_compser = output_composer
+        self.output_composer = output_composer
 
     def _build_agent(self) -> Agent[DepsT, OutputT]:
         agent = Agent[DepsT, OutputT](
@@ -66,11 +70,11 @@ class ResearchAgent(Generic[DepsT, OutputT]):
         )
 
         @agent.system_prompt
-        def _supply_toolset_info(ctx: RunContext[DepsT]) -> str:
+        def _add_toolset_info(ctx: RunContext[DepsT]) -> str:
             return f"The mcp server tools are {ctx.deps.mcp_toolset_info}."
 
         @agent.system_prompt
-        def _add_context(ctx: RunContext[DepsT]) -> str:
+        def _add_user_requirements(ctx: RunContext[DepsT]) -> str:
             return f"""
             Preferred Sources: {ctx.deps.sources}
             Maximum Results: {ctx.deps.max_results}
@@ -83,9 +87,21 @@ class ResearchAgent(Generic[DepsT, OutputT]):
         try:
             async with agent:
                 response = await agent.run(query, deps=deps)
-            return self.output_compser.build_output(
+            return self.output_composer.build_success_output(
                 data=response.output.research_output
             )
 
+        except ModelHTTPError as e:
+            return self.output_composer.build_error_output(
+                e=e, msg="Model connection failed."
+            )
+
+        except RuntimeError as e:
+            if "All connection attempts failed" in str(e):
+                return self.output_composer.build_error_output(
+                    e=e, msg="MCP connection failed."
+                )
+            return self.output_composer.build_error_output(e)
+
         except Exception as e:
-            return self.output_compser.handle_search_error(e)
+            return self.output_composer.build_error_output(e)

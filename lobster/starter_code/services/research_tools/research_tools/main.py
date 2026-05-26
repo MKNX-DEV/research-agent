@@ -50,7 +50,7 @@ async def search(input: SearchParameters) -> SearchOutput:
             keyword=input.keyword, sources=input.sources, max_results=input.max_results
         )
 
-        results = engine.search(data=settings.DATA)
+        results = engine.search(settings.DATA)
         logger.info(f"Found research data: {results[:2]}")
         return SearchOutput(search_output=results)
 
@@ -77,7 +77,9 @@ async def synthesize(input: SynthesizeParameters) -> SynthesizeOutput:
 
 
 @server.tool(description="Analyze synthesized content for insights")
-async def analyze(input: AnalyzeParameters, ctx: Context) -> str:  # AnalyzeOutput:
+async def analyze(
+    input: AnalyzeParameters, ctx: Context
+) -> str | None:  # AnalyzeOutput:
     result = await ctx.sample(
         messages=input.user_query,
         system_prompt=dedent(

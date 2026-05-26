@@ -66,7 +66,7 @@ async def research(
         settings=settings,
         output_type=ResearchAgentOutput,
         deps_type=AgentDeps,
-        output_composer=OutputComposer(),
+        output_composer=OutputComposer,
     )
 
     agent_deps = AgentDeps(

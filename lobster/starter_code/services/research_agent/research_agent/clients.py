@@ -59,10 +59,9 @@ def create_mcp_client(
         return toolset
 
     except Exception as e:
-        logger.error("Failed to initialize MCP client")
-        raise MCPConnectionError(
-            f"Could not initialize MCP client for MCP server at {settings.MCP_SERVER_URL}"
-        ) from e
+        msg = f"Could not initialize MCP client for MCP server at {settings.MCP_SERVER_URL}"
+        logger.error(msg)
+        raise MCPConnectionError(msg) from e
 
 
 async def verify_mcp_connection(toolset: MCPToolset[AgentDeps]) -> None:
@@ -72,8 +71,9 @@ async def verify_mcp_connection(toolset: MCPToolset[AgentDeps]) -> None:
         logger.info("Verified the MCP server connection")
 
     except Exception as e:
-        logger.error("Failed to connect to MCP server")
-        raise MCPConnectionError("Could not connect to MCP server") from e
+        msg = "Failed to connect to MCP server"
+        logger.error(msg)
+        raise MCPConnectionError(msg) from e
 
 
 async def query_mcp_toolset_info(client: MCPToolset[AgentDeps]) -> list[Tool]:
@@ -81,21 +81,13 @@ async def query_mcp_toolset_info(client: MCPToolset[AgentDeps]) -> list[Tool]:
         async with client:
             mcp_tool_info = await client.list_tools()
         tool_names = [tool.name for tool in mcp_tool_info]
-        logger.info(f"Retrieved {len(mcp_tool_info)} MCP tools. They are: {tool_names}")
+        logger.info(f"Retrieved {len(mcp_tool_info)} MCP tools: {tool_names}")
         return mcp_tool_info
 
     except Exception as e:
-        logger.error("Failed to retrieve MCP tools")
-        raise MCPConnectionError("Unable to retrieve MCP tools") from e
-
-
-async def log_handler(message: LogMessage) -> None:
-    """Receive structured logs emitted by the MCP server."""
-    msg = message.data.get("msg")
-    extra = message.data.get("extra")
-    LOGGING_LEVEL_MAP = logging.getLevelNamesMapping()
-    level = LOGGING_LEVEL_MAP.get(message.level.upper(), logging.INFO)
-    logger.log(level, msg, extra=extra)
+        msg = "Failed to retrieve MCP tools"
+        logger.error(msg)
+        raise MCPConnectionError(msg) from e
 
 
 class SamplingHandler:
@@ -115,5 +107,6 @@ class SamplingHandler:
             m.content.text for m in messages if isinstance(m.content, TextContent)
         )
 
+        logger.info(f"Calling MCP sampling with the message: {user_query}")
         result = await agent.run(user_query)
         return result.output
