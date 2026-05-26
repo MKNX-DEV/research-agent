@@ -14,8 +14,9 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.github import GitHubProvider
 
 from research_agent.exceptions import (
-    MCPConnectionError,
-    ModelConnectionError,
+    MCPClientError,
+    MCPServerConnectionError,
+    ModelClientError,
 )
 from research_agent.models import AgentDeps
 from research_agent.settings import Settings
@@ -23,7 +24,7 @@ from research_agent.settings import Settings
 logger = logging.getLogger(__name__)
 
 
-def create_model_client(settings: Settings) -> Model:
+def create_model_client(settings: Settings) -> Model[Any]:
     try:
         model = OpenAIChatModel(
             model_name=settings.LLM_NAME,
@@ -34,11 +35,9 @@ def create_model_client(settings: Settings) -> Model:
         return model
 
     except Exception as e:
-        logger.error("Failed to initialize model client")
-
-        raise ModelConnectionError(
-            f"Could not initialize model {settings.LLM_NAME}"
-        ) from e
+        msg = f"Failed to initialize model client for {settings.LLM_NAME}"
+        logger.exception(msg)
+        raise ModelClientError(msg) from e
 
 
 def create_mcp_client(
@@ -60,8 +59,8 @@ def create_mcp_client(
 
     except Exception as e:
         msg = f"Could not initialize MCP client for MCP server at {settings.MCP_SERVER_URL}"
-        logger.error(msg)
-        raise MCPConnectionError(msg) from e
+        logger.exception(msg)
+        raise MCPClientError(msg) from e
 
 
 async def verify_mcp_connection(toolset: MCPToolset[AgentDeps]) -> None:
@@ -72,8 +71,8 @@ async def verify_mcp_connection(toolset: MCPToolset[AgentDeps]) -> None:
 
     except Exception as e:
         msg = "Failed to connect to MCP server"
-        logger.error(msg)
-        raise MCPConnectionError(msg) from e
+        logger.exception(msg)
+        raise MCPServerConnectionError(msg) from e
 
 
 async def query_mcp_toolset_info(client: MCPToolset[AgentDeps]) -> list[Tool]:
@@ -86,8 +85,8 @@ async def query_mcp_toolset_info(client: MCPToolset[AgentDeps]) -> list[Tool]:
 
     except Exception as e:
         msg = "Failed to retrieve MCP tools"
-        logger.error(msg)
-        raise MCPConnectionError(msg) from e
+        logger.exception(msg)
+        raise MCPServerConnectionError(msg) from e
 
 
 class SamplingHandler:

@@ -6,7 +6,6 @@ from typing import Any
 
 from research_tools.exceptions import (
     DatasetNotAvailableError,
-    NoSearchResultsError,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,14 +27,16 @@ class SearchEngine:
         logger.info("Input data loaded")
         return data
 
-    def search(self, data_path: Path) -> list[str]:
+    def search(self, data_path: Path) -> list[str] | None:
         data = self._read(data_path)
         search_results = self._filter_results(data=data)
+        if not search_results:
+            return None
         return self._format_results(search_results)
 
     def _filter_results(
         self, data: dict[str, list[dict[str, Any]]]
-    ) -> list[dict[str, str]]:
+    ) -> list[dict[str, str]] | None:
         filtered_data = list(
             islice(
                 (
@@ -53,9 +54,10 @@ class SearchEngine:
         )
 
         if len(filtered_data) == 0:
-            raise NoSearchResultsError(
-                f"No matching data for the keyword: {self.keyword} or sources: {self.sources}"
+            logger.info(
+                f"No matching data for keyword {self.keyword} or sources {self.sources}"
             )
+            return None
 
         logger.info("Filtered the input data")
         return filtered_data
