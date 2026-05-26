@@ -42,7 +42,7 @@ async def health_check(request: Request):
     return JSONResponse({"status": "healthy"})
 
 
-@server.tool(description="Search the dataset for user-requested information")
+@server.tool(description="Search the dataset for user-requested information.")
 async def search(input: SearchParameters) -> SearchOutput:
 
     try:

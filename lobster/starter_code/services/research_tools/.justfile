@@ -13,7 +13,7 @@ clean:
 
 # Run tests with coverage
 test:
-    {{PY_FLAGS}} uv run pytest -v "{{TESTS}}" --cov="{{SRC}}" --cov-report=term-missing
+    {{PY_FLAGS}} uv run pytest -s -v "{{TESTS}}" --cov="{{SRC}}" --cov-report=term-missing
 
 # Check formatting
 format-check:

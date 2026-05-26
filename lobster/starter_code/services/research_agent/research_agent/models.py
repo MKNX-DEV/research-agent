@@ -49,9 +49,6 @@ class ResearchQuery(BaseModel):
     sources: list[str] | None = Field(
         default=None, description="Preferred sources or domains"
     )
-    max_results: int = Field(
-        default=5, description="Maximum number of results to return"
-    )
 
 
 @dataclass

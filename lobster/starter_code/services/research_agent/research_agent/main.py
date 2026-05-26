@@ -73,7 +73,21 @@ async def research(
     agent_deps = AgentDeps(
         mcp_toolset_info=mcp_toolset_info,
         sources=request.sources,
-        max_results=request.max_results,
+        max_results=settings.MAX_RESULTS,
     )
 
     return await agent.run(request.query, deps=agent_deps)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "research_agent.main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=True,
+        log_level=settings.LOG_LEVEL.lower(),
+        limit_concurrency=settings.MAX_CONCURRENT_REQUESTS,
+        timeout_keep_alive=settings.REQUEST_TIMEOUT,
+    )
+

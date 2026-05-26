@@ -18,3 +18,9 @@ class Settings(BaseSettings):
     GITHUB_MODELS_API_KEY: SecretStr
     RETRIES: int = 3
     MCP_SERVER_URL: HttpUrl = HttpUrl("http://localhost:8001/mcp")
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+    MAX_CONCURRENT_REQUESTS: int = 10
+    REQUEST_TIMEOUT: int = 30
+    MAX_RESULTS: int = 5
+

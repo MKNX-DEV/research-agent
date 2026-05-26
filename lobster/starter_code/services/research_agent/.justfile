@@ -36,5 +36,5 @@ type-check:
     {{PY_FLAGS}} uv run pyright
 
 # Run app
-run log_level="info":
-    uv run uvicorn research_agent.main:app --host 0.0.0.0 --port 8000 --reload --log-level {{log_level}}
+run:
+    uv run python -m research_agent.main
