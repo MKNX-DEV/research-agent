@@ -28,8 +28,8 @@ class SearchEngine:
         logger.info("Input data loaded")
         return data
 
-    def search(self, data: Path) -> list[str]:
-        data = self._read(data)
+    def search(self, data_path: Path) -> list[str]:
+        data = self._read(data_path)
         search_results = self._filter_results(data=data)
         return self._format_results(search_results)
 

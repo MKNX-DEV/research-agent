@@ -10,6 +10,7 @@ to gather and synthesize information.
 # from fastapi.responses import JSONResponse
 
 from fastapi import Depends, FastAPI  # , HTTPException
+from mcp.types import Tool
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models import Model
 
@@ -52,8 +53,8 @@ async def research(
     request: ResearchQuery,
     model: Model = Depends(get_model),
     settings: Settings = Depends(get_settings),
-    mcp_client: MCPToolset = Depends(get_mcp_client),
-    mcp_toolset_info: list = Depends(get_mcp_toolset_info),
+    mcp_client: MCPToolset[AgentDeps] = Depends(get_mcp_client),
+    mcp_toolset_info: list[Tool] = Depends(get_mcp_toolset_info),
 ) -> ResearchEndpointOutput:
 
     logger.info(f"Received user query: {request.query}")
@@ -65,7 +66,7 @@ async def research(
         settings=settings,
         output_type=ResearchAgentOutput,
         deps_type=AgentDeps,
-        output_composer=OutputComposer(),
+        output_composer=OutputComposer,
     )
 
     agent_deps = AgentDeps(

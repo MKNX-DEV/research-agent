@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal
 
+from mcp.types import Tool
 from pydantic import BaseModel, Field
 
 
@@ -37,6 +38,6 @@ class ResearchQuery(BaseModel):
 
 @dataclass
 class AgentDeps:
-    mcp_toolset_info: list = Field(description="")
-    sources: list[str] = Field(description="")
+    mcp_toolset_info: list[Tool] = Field(description="")
+    sources: list[str] | None = Field(description="")
     max_results: int = Field(description="")

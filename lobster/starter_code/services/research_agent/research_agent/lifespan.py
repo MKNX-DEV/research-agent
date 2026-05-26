@@ -6,10 +6,10 @@ from fastapi import FastAPI
 from research_agent.clients import (
     create_mcp_client,
     create_model_client,
-    log_handler,
     query_mcp_toolset_info,
     verify_mcp_connection,
 )
+from research_agent.logging import log_handler
 from research_agent.settings import load_settings
 
 logger = logging.getLogger(__name__)
