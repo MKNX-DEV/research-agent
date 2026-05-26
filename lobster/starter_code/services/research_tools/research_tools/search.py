@@ -4,57 +4,12 @@ from itertools import islice
 from pathlib import Path
 from typing import Any
 
-from fastmcp.server.middleware import Middleware, MiddlewareContext
-from pydantic import ValidationError
-from uvicorn.logging import DefaultFormatter
-
-from research_tools.config import LogLevelConfig, MCPConfig
 from research_tools.exceptions import (
-    ConfigurationError,
     DatasetNotAvailableError,
     NoSearchResultsError,
 )
 
 logger = logging.getLogger(__name__)
-
-
-def configure_logger(title: str) -> logging.Logger:
-    handler = logging.StreamHandler()
-    handler.setFormatter(
-        DefaultFormatter(
-            fmt="%(levelprefix)s %(name)s: %(message)s",
-            use_colors=True,
-        )
-    )
-
-    logger = logging.getLogger(title)
-    logger.setLevel(level=getattr(logging, LogLevelConfig().log_level))
-    logger.addHandler(handler)
-    return logger
-
-
-def load_config() -> MCPConfig:
-    try:
-        config = MCPConfig()
-        logger.info("Application configuration loaded")
-        return config
-
-    except ValidationError as e:
-        invalid_fields = [".".join(map(str, err["loc"])) for err in e.errors()]
-        logger.error(f"Invalid configuration: {invalid_fields}")
-        raise ConfigurationError("Missing or invalid environment variables") from e
-
-
-class LoggingMiddleware(Middleware):
-    async def on_call_tool(self, context: MiddlewareContext, call_next):
-        tool_name = context.message.name
-        args = context.message.arguments
-        log_message = f"Called MCP tool {tool_name}."
-        logger.info(log_message)
-        logger.debug(f"Passed tool arguments {args}")
-        await context.fastmcp_context.info(log_message)
-        result = await call_next(context)
-        return result
 
 
 class SearchEngine:
