@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.14"
 
 [options]
-exclude-newer = "2026-05-12T20:07:58.132824Z"
+exclude-newer = "2026-05-12T23:22:55.33101Z"
 exclude-newer-span = "P14D"
 
 [[package]]
@@ -998,7 +998,7 @@ requires-dist = [
     { name = "fastmcp", specifier = "==3.2.4" },
     { name = "pydantic", specifier = "==2.13.4" },
     { name = "pydantic-settings", specifier = "==2.14.0" },
-    { name = "shared-libs", editable = "../shared_libs" },
+    { name = "shared-libs", editable = "../../shared_libs" },
 ]
 
 [package.metadata.requires-dev]
@@ -1113,7 +1113,7 @@ wheels = [
 [[package]]
 name = "shared-libs"
 version = "0.1.0"
-source = { editable = "../shared_libs" }
+source = { editable = "../../shared_libs" }
 dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
