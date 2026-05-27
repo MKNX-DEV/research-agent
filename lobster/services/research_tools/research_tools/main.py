@@ -13,6 +13,7 @@ from research_tools.exceptions import DatasetNotAvailableError
 from research_tools.logging import LoggingMiddleware
 from research_tools.models import (
     AnalyzeParameters,
+    ExtractKeywordParameters,
     SearchOutput,
     SearchParameters,
     SynthesizeOutput,
@@ -37,7 +38,17 @@ async def health_check(request: Request):
     return JSONResponse({"status": "healthy"})
 
 
-@server.tool(description="Search the dataset for user-requested information.")
+@server.tool(
+    description="Extract the primary keyword from the user query to use for search"
+)
+async def extract_keyword(input: ExtractKeywordParameters, ctx: Context) -> str:
+    result = await ctx.sample(messages=input.user_query)
+    return result.text
+
+
+@server.tool(
+    description="Perform a search using a single keyword to find the requested information in the dataset."
+)
 async def search(input: SearchParameters) -> SearchOutput:
 
     try:

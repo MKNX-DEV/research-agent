@@ -1,6 +1,12 @@
 from pydantic import BaseModel, Field, model_validator
 
 
+class ExtractKeywordParameters(BaseModel):
+    user_query: str = Field(
+        description="Original user query used to extract the primary keyword from"
+    )
+
+
 class SearchParameters(BaseModel):
     keyword: str = Field(
         description="Primary search keyword derived from the user input"
