@@ -14,10 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(case_sensitive=True, env_file=ENV_FILE)
+    model_config = SettingsConfigDict(case_sensitive=True)
     LOG_LEVEL: Literal["DEBUG", "INFO"] = "INFO"
-    LLM_NAME: str
-    GITHUB_MODELS_API_KEY: SecretStr
+    LLM_NAME: str = "openai/gpt-4o-mini"
+    GITHUB_MODELS_API_GPT_4_O_MINI: SecretStr
     RETRIES: int = 3
     MCP_SERVER_URL: HttpUrl = HttpUrl("http://localhost:8001/mcp")
     HOST: str = "0.0.0.0"
