@@ -1,7 +1,7 @@
-compose-up:
+up:
     docker compose up --build
 
-compose-down:
+down:
     docker compose down
 
 logs:

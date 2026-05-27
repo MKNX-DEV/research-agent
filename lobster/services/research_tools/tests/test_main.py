@@ -8,7 +8,6 @@ from fastmcp.client.transports import FastMCPTransport
 
 from research_tools.main import server
 from research_tools.search import SearchEngine
-from research_tools.models import SearchOutput
 
 
 @pytest_asyncio.fixture
@@ -123,7 +122,4 @@ async def test_synthesize_tool(main_mcp_client):
         "Deep Learning: Advanced machine learning techniques [2]"
     )
 
-    assert (
-        result.structured_content["synthesize_output"]
-        == expected
-    )
+    assert result.structured_content["synthesize_output"] == expected

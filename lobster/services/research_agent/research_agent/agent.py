@@ -1,3 +1,5 @@
+"""Construct the research agent."""
+
 import logging
 from typing import Generic, TypeVar
 

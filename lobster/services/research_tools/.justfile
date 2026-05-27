@@ -33,7 +33,7 @@ lint-fix:
 
 # Static type check
 type-check:
-    {{PY_FLAGS}} uv run pyright
+    {{PY_FLAGS}} uv run pyright "{{SRC}}"
 
 # Run app
 run:

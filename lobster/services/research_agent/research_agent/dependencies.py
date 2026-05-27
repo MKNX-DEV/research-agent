@@ -1,3 +1,5 @@
+"""Dependency injection utilities."""
+
 from fastapi import Request
 from mcp.types import Tool
 from pydantic_ai.mcp import MCPToolset
