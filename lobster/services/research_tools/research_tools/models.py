@@ -10,7 +10,9 @@ class SearchParameters(BaseModel):
 
 
 class SearchOutput(BaseModel):
-    search_output: list[str] | None = Field(description="Search results returned by the search tool")
+    search_output: list[str] | None = Field(
+        description="Search results returned by the search tool"
+    )
     found_results: bool = Field(
         description="Whether the search returned matching results"
     )
@@ -31,7 +33,9 @@ class SynthesizeParameters(BaseModel):
 
 
 class SynthesizeOutput(BaseModel):
-    synthesize_output: str = Field(description="Synthesized representation of the search results")
+    synthesize_output: str = Field(
+        description="Synthesized representation of the search results"
+    )
 
 
 class AnalyzeParameters(BaseModel):
