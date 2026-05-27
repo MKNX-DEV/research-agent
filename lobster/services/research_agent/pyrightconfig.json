@@ -4,6 +4,6 @@
   "venvPath": ".",
   "venv": ".venv",
   "extraPaths": [
-    "../shared_libs"
+    "../../shared_libs"
   ]
 }

@@ -32,4 +32,4 @@ quote-style = "double"
 extend-select = ["I"]
 
 [tool.uv.sources]
-shared_libs = { path = "../shared_libs", editable = true }
+shared_libs = { path = "../../shared_libs", editable = true }

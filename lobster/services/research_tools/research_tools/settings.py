@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[2]
 data_path = ROOT.parent / "data/mock_research_data.json"
 
 logger = logging.getLogger(__name__)

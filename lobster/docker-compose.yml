@@ -1,0 +1,34 @@
+services:
+  research-tools:
+    build:
+      context: .
+      dockerfile: services/research_tools/Dockerfile
+    container_name: research-tools
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./data:/data:ro
+    environment:
+      DATA: /data/mock_research_data.json
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  research-agent:
+    build:
+      context: .
+      dockerfile: services/research_agent/Dockerfile
+    container_name: research-agent
+    ports:
+      - "8000:8000"
+    env_file:
+      - services/research_agent/.env
+    environment:
+      MCP_SERVER_URL: http://research-tools:8001/mcp
+    depends_on:
+      research-tools:
+        condition: service_healthy
+    restart: unless-stopped

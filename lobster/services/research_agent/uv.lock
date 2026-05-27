@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.14"
 
 [options]
-exclude-newer = "2026-05-23T20:22:44.775813Z"
+exclude-newer = "2026-05-23T23:37:23.893529Z"
 exclude-newer-span = "P3D"
 
 [[package]]
@@ -2066,7 +2066,7 @@ requires-dist = [
     { name = "pydantic", specifier = "==2.13.4" },
     { name = "pydantic-ai", specifier = "==1.97.0" },
     { name = "pydantic-settings", specifier = "==2.14.0" },
-    { name = "shared-libs", editable = "../shared_libs" },
+    { name = "shared-libs", editable = "../../shared_libs" },
 ]
 
 [package.metadata.requires-dev]
@@ -2193,7 +2193,7 @@ wheels = [
 [[package]]
 name = "shared-libs"
 version = "0.1.0"
-source = { editable = "../shared_libs" }
+source = { editable = "../../shared_libs" }
 dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
