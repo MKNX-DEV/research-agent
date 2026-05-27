@@ -1,9 +1,4 @@
-"""
-Research Tool Service
-
-This is a template - feel free to completely rewrite or restructure as needed.
-This service exposes tools via MCP protocol for agents to use.
-"""
+"""Application entrypoint exposing the FastMCP endpoints."""
 
 from textwrap import dedent
 

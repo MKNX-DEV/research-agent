@@ -79,6 +79,7 @@ specifically inside the `create_model_client` function.
 - I spent limited time on testing, so the current test coverage is intentionally minimal. However, I consider testing to be an important part of production-grade systems.
 - I unfortunately did not manage to spend time on evals. In particular, I wanted to experiment with the new [Pydantic Evals](https://pydantic.dev/docs/ai/evals/evals/) library.
 - The current search engine implementation is intentionally simple, which impacts retrieval quality, especially when using smaller or less capable models.
+- I did not spend significant time optimizing concurrency, throughput, or latency characteristics, as I prioritized correctness, architecture, and maintainability for the scope of the assignment.
 
 ## Future improvement ideas
 
