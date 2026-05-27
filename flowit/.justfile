@@ -33,3 +33,6 @@ lint-fix:
 # Static type check
 type-check:
     {{PY_FLAGS}} uv run pyright
+
+run:
+    {{PY_FLAGS}} infisical run -- uv run python -m flowit.main
