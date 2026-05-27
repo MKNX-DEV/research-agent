@@ -1,3 +1,5 @@
+"""Environment variable management."""
+
 import logging
 from pathlib import Path
 from typing import Literal
@@ -23,4 +25,3 @@ class Settings(BaseSettings):
     MAX_CONCURRENT_REQUESTS: int = 10
     REQUEST_TIMEOUT: int = 30
     MAX_RESULTS: int = 5
-

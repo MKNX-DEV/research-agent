@@ -1,3 +1,5 @@
+"""Client configuration and validation for the model and MCP services."""
+
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any

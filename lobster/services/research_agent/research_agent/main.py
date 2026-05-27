@@ -1,15 +1,6 @@
-"""
-Research Agent
+"""Application entrypoint exposing the FastAPI endpoints."""
 
-This is a template - feel free to completely rewrite or restructure as needed.
-This agent receives natural language research requests and uses the tool service
-to gather and synthesize information.
-"""
-
-# import httpx
-# from fastapi.responses import JSONResponse
-
-from fastapi import Depends, FastAPI  # , HTTPException
+from fastapi import Depends, FastAPI
 from mcp.types import Tool
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models import Model
@@ -81,6 +72,7 @@ async def research(
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "research_agent.main:app",
         host=settings.HOST,
@@ -90,4 +82,3 @@ if __name__ == "__main__":
         limit_concurrency=settings.MAX_CONCURRENT_REQUESTS,
         timeout_keep_alive=settings.REQUEST_TIMEOUT,
     )
-

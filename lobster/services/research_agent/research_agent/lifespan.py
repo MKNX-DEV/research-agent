@@ -1,3 +1,5 @@
+"""Application lifespan management."""
+
 import logging
 from contextlib import asynccontextmanager
 
