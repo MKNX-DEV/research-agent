@@ -37,5 +37,6 @@ def configure_logger(title: str, log_level: Literal["DEBUG", "INFO"]) -> logging
 
     logger = logging.getLogger(title)
     logger.setLevel(level=getattr(logging, log_level))
-    logger.addHandler(handler)
+    if not logger.handlers:
+        logger.addHandler(handler)
     return logger

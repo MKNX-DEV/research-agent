@@ -12,8 +12,8 @@ from mcp.types import TextContent, Tool
 from pydantic_ai import Agent
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models import Model
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.github import GitHubProvider
+from pydantic_ai.models.groq import GroqModel
+from pydantic_ai.providers.groq import GroqProvider
 
 from research_agent.exceptions import (
     MCPClientError,
@@ -28,11 +28,9 @@ logger = logging.getLogger(__name__)
 
 def create_model_client(settings: Settings) -> Model[Any]:
     try:
-        model = OpenAIChatModel(
+        model = GroqModel(
             model_name=settings.LLM_NAME,
-            provider=GitHubProvider(
-                api_key=settings.GITHUB_MODELS_API_GPT_4_O_MINI.get_secret_value()
-            ),
+            provider=GroqProvider(api_key=settings.MODEL_API_KEY.get_secret_value()),
         )
 
         logger.info(f"Initialized model client for the {settings.LLM_NAME} model")
@@ -110,6 +108,6 @@ class SamplingHandler:
             m.content.text for m in messages if isinstance(m.content, TextContent)
         )
 
-        logger.info(f"Calling MCP sampling with the message: {user_query}")
+        logger.info("Calling MCP sampling.")
         result = await agent.run(user_query)
         return result.output

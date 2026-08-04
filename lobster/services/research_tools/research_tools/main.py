@@ -42,7 +42,13 @@ async def health_check(request: Request):
     description="Extract the primary keyword from the user query to use for search"
 )
 async def extract_keyword(input: ExtractKeywordParameters, ctx: Context) -> str:
-    result = await ctx.sample(messages=input.user_query)
+    result = await ctx.sample(
+        messages=input.user_query,
+        system_prompt=dedent(
+            "Extract and return the keyword from the user input to use it further for search purposes."
+        ),
+    )
+
     return result.text
 
 
