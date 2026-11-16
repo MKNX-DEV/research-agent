@@ -1,5 +1,9 @@
 # README
 
+## Warning
+
+This project was originally built to use the GitHub Models API, which has since been discontinued.
+
 ## Project setup
 
 - This solution uses [uv](https://docs.astral.sh/uv/) as the Python and package manager.
