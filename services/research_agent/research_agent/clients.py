@@ -31,7 +31,7 @@ def create_model_client(settings: Settings) -> Model[Any]:
         model = OpenAIChatModel(
             model_name=settings.LLM_NAME,
             provider=GitHubProvider(
-                api_key=settings.GITHUB_MODELS_API_GPT_4_O_MINI.get_secret_value()
+                api_key=settings.GITHUB_MODELS_API_KEY.get_secret_value()
             ),
         )
 
